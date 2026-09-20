@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPKD AIAE VS BUG AND ERROS</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- =====================================================
+       SCREEN 1: Character Select
+  ====================================================== -->
+  <div id="screen-charselect" class="screen active">
+    <div class="charselect-container">
+      <h1 class="title-main">PPKD AIAE</h1>
+      <h2 class="title-sub">VS BUG AND ERROS</h2>
+      <p class="title-mini">[ PILIH PERAN AIAE KAMU ]</p>
+      <div class="hero-cards">
+
+        <div class="hero-card" id="card-king" data-hero="king">
+          <div class="hero-sprite-placeholder" style="background:#00FFFF;border:2px solid #00FFFF;">
+            <div class="hero-sprite-inner" style="background:#0D0D1A;margin:4px;">
+              <div style="color:#00FFFF;font-size:10px;text-align:center;padding-top:8px;">K</div>
+              <div style="color:#00FFFF;font-size:6px;text-align:center;">KING</div>
+            </div>
+          </div>
+          <div class="hero-name">KING</div>
+          <div class="hero-subtitle">The Architect</div>
+          <div class="hero-flavor">"Sistem yang kuat bukan yang terkuat sendiri, tapi yang membuat semua unit di sekitarnya tidak terkalahkan."</div>
+          <table class="hero-stat-table">
+            <tr><td>HP</td><td>80</td></tr>
+            <tr><td>Damage</td><td>0 (buffer)</td></tr>
+            <tr><td>Armor</td><td>5</td></tr>
+            <tr><td>Spesial</td><td>Aura Buff Tower</td></tr>
+            <tr><td>Pasif</td><td>+10% dmg semua tower</td></tr>
+          </table>
+          <button class="btn-select" onclick="goToSetup('king')">[ PILIH KING ]</button>
+        </div>
+
+        <div class="hero-card" id="card-knight" data-hero="knight">
+          <div class="hero-sprite-placeholder" style="background:#FF2D55;border:2px solid #FF2D55;">
+            <div class="hero-sprite-inner" style="background:#0D0D1A;margin:4px;">
+              <div style="color:#FF2D55;font-size:10px;text-align:center;padding-top:8px;">K</div>
+              <div style="color:#FF2D55;font-size:6px;text-align:center;">KNIGHT</div>
+            </div>
+          </div>
+          <div class="hero-name">KNIGHT</div>
+          <div class="hero-subtitle">The Breaker</div>
+          <div class="hero-flavor">"Kalau kode bisa error, aku bisa juga. Tapi aku tidak akan crash duluan."</div>
+          <table class="hero-stat-table">
+            <tr><td>HP</td><td>250</td></tr>
+            <tr><td>Damage</td><td>35</td></tr>
+            <tr><td>Armor</td><td>15</td></tr>
+            <tr><td>Spesial</td><td>Melee + Shield Bash</td></tr>
+            <tr><td>Pasif</td><td>Taunt musuh terdekat</td></tr>
+          </table>
+          <button class="btn-select" onclick="goToSetup('knight')">[ PILIH KNIGHT ]</button>
+        </div>
+
+        <div class="hero-card" id="card-queen" data-hero="queen">
+          <div class="hero-sprite-placeholder" style="background:#7B2FBE;border:2px solid #7B2FBE;">
+            <div class="hero-sprite-inner" style="background:#0D0D1A;margin:4px;">
+              <div style="color:#7B2FBE;font-size:10px;text-align:center;padding-top:8px;">Q</div>
+              <div style="color:#7B2FBE;font-size:6px;text-align:center;">QUEEN</div>
+            </div>
+          </div>
+          <div class="hero-name">QUEEN</div>
+          <div class="hero-subtitle">The Foundry</div>
+          <div class="hero-flavor">"Setiap Data Bit yang kamu buang, sudah aku kalikan dua sebelum kamu sempat berkedip."</div>
+          <table class="hero-stat-table">
+            <tr><td>HP</td><td>120</td></tr>
+            <tr><td>Damage</td><td>0 (ekonomi)</td></tr>
+            <tr><td>Armor</td><td>8</td></tr>
+            <tr><td>Spesial</td><td>Crypto Shard Gen</td></tr>
+            <tr><td>Pasif</td><td>+1 slot summon / 3 lvl</td></tr>
+          </table>
+          <button class="btn-select" onclick="goToSetup('queen')">[ PILIH QUEEN ]</button>
+        </div>
+
+      </div>
+      <p class="footer-note">Hero starter dipilih di sini (gratis). Hero lain bisa dibeli dengan Data Bits saat game berjalan.</p>
+
+      <!-- AUDIO MANAGER: Volume controls di Character Select screen -->
+      <div class="audio-controls-panel" id="audio-panel-charselect">
+        <div class="audio-panel-title">[ AUDIO SETTINGS ]</div>
+        <div class="audio-row">
+          <span class="audio-row-label">BGM</span>
+          <input type="range" class="audio-bgm-slider audio-slider"
+                 min="0" max="100" step="5" value="50"
+                 oninput="onBgmSliderChange(this.value)" />
+          <span class="audio-bgm-label audio-val-label">50%</span>
+        </div>
+        <div class="audio-row">
+          <span class="audio-row-label">SFX</span>
+          <input type="range" class="audio-sfx-slider audio-slider"
+                 min="0" max="100" step="5" value="50"
+                 oninput="onSfxSliderChange(this.value)" />
+          <span class="audio-sfx-label audio-val-label">50%</span>
+        </div>
+        <button class="audio-mute-btn" onclick="toggleMasterMute()">[SOUND ON]</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =====================================================
+       SCREEN 2: Game Setup (Map Size + Difficulty)
+  ====================================================== -->
+  <div id="screen-setup" class="screen">
+    <div class="setup-container">
+      <h2 class="title-sub" style="margin-bottom:4px;">GAME SETUP</h2>
+      <p class="title-mini" id="setup-hero-label">HERO: —</p>
+
+      <!-- Map Size Section -->
+      <div class="setup-section">
+        <div class="setup-section-title">&#x25B6; MAP SIZE</div>
+        <div class="setup-options" id="map-size-options">
+          <div class="setup-option-card active" data-group="map" data-val="small">
+            <div class="setup-opt-label">SMALL</div>
+            <div class="setup-opt-desc">Compact Grid<br/>10×6 tiles</div>
+          </div>
+          <div class="setup-option-card" data-group="map" data-val="medium">
+            <div class="setup-opt-label">MEDIUM</div>
+            <div class="setup-opt-desc">Standard Balanced<br/>12×8 tiles</div>
+          </div>
+          <div class="setup-option-card" data-group="map" data-val="large">
+            <div class="setup-opt-label">LARGE</div>
+            <div class="setup-opt-desc">Expanded Spacious<br/>16×10 tiles</div>
+          </div>
+          <div class="setup-option-card" data-group="map" data-val="massive">
+            <div class="setup-opt-label">MASSIVE</div>
+            <div class="setup-opt-desc">Ultra-Wide Strategic<br/>20×12 tiles</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Difficulty Section -->
+      <div class="setup-section">
+        <div class="setup-section-title">&#x25B6; DIFFICULTY</div>
+        <div class="setup-options" id="difficulty-options">
+          <div class="setup-option-card diff-card" data-group="diff" data-val="ez" style="--diff-col:#39FF14;">
+            <div class="setup-opt-label" style="color:#39FF14;">EZ MODE</div>
+            <div class="setup-opt-desc">Casual Scaling<br/>Higher Income</div>
+          </div>
+          <div class="setup-option-card diff-card active" data-group="diff" data-val="medium" style="--diff-col:#FFD700;">
+            <div class="setup-opt-label" style="color:#FFD700;">MEDIUM</div>
+            <div class="setup-opt-desc">Standard Baseline<br/>Balanced</div>
+          </div>
+          <div class="setup-option-card diff-card" data-group="diff" data-val="hard" style="--diff-col:#FF6B00;">
+            <div class="setup-opt-label" style="color:#FF6B00;">HARD MODE</div>
+            <div class="setup-opt-desc">Faster Waves<br/>Tankier Enemies</div>
+          </div>
+          <div class="setup-option-card diff-card" data-group="diff" data-val="extreme" style="--diff-col:#FF2D55;">
+            <div class="setup-opt-label" style="color:#FF2D55;">EXTREME</div>
+            <div class="setup-opt-desc">Max Challenge<br/>Aggressive Spawns</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn-select" style="width:160px;" onclick="showScreen('charselect')">[ BACK ]</button>
+        <button class="btn-select" style="width:200px;border-color:#39FF14;color:#39FF14;" id="btn-launch" onclick="launchGame()">[ START GAME ]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       SCREEN 3: Game
+  ====================================================== -->
+  <div id="screen-game" class="screen">
+
+    <!-- Top HUD Bar -->
+    <div id="hud-top">
+      <div id="hud-wave">WAVE: <span id="ui-wave">0</span></div>
+      <div id="hud-core">
+        <span>CORE HP:</span>
+        <div id="core-hp-bar-wrap">
+          <div id="core-hp-bar"></div>
+        </div>
+        <span id="ui-core-hp">100/100</span>
+      </div>
+      <div id="hud-controls">
+        <button class="btn-hud" id="btn-pause" onclick="togglePause()">PAUSE</button>
+        <!-- Rev 8: Auto Wave toggle — triggers next wave immediately when ON -->
+        <button class="btn-hud" id="btn-auto-wave" onclick="toggleAutoWave()" title="Auto Wave: automatically starts the next wave when current ends">AUTO WAVE: OFF</button>
+        <button class="btn-hud" id="btn-quit" onclick="requestQuit()">QUIT</button>
+        <div id="speed-control">
+          <span style="font-size:6px; color:#aaa;">SPD</span>
+          <input
+            type="range"
+            id="speed-slider"
+            min="0" max="40" step="10" value="10"
+            oninput="onSpeedSliderChange(this.value)"
+            title="Geser kiri: 0.5x | tengah: 1x | kanan: 5x"
+          />
+          <span id="speed-label" style="font-size:7px; color:#FFD700; min-width:22px;">1x</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main game area: Sidebar + Canvas -->
+    <div id="game-main">
+
+      <!-- ==========================================
+           LEFT VERTICAL SIDEBAR
+      =========================================== -->
+      <aside id="hud-sidebar">
+
+        <!-- SECTION: All Heroes Status Cards -->
+        <div class="sidebar-section" id="sidebar-heroes">
+          <div class="sidebar-section-title">HERO STATUS</div>
+          <!-- Hero cards rendered here by buildSidebarHeroCards() -->
+          <div id="sidebar-hero-cards"></div>
+        </div>
+
+        <!-- SECTION: Tower Shop -->
+        <div class="sidebar-section" id="sidebar-shop">
+          <div class="sidebar-section-title">TOWER SHOP</div>
+          <div id="shop-items"></div>
+        </div>
+
+        <!-- SECTION: Resources -->
+        <div class="sidebar-section" id="sidebar-currency">
+          <div class="sidebar-section-title">SUMBER DAYA</div>
+          <div class="currency-row">
+            <span class="currency-icon" style="color:#39FF14;">&#9632;</span>
+            <span>Data Bits</span>
+            <span id="ui-databits" class="currency-val">0</span>
+          </div>
+          <div class="currency-row">
+            <span class="currency-icon" style="color:#7B2FBE;">&#9670;</span>
+            <span>Crypto Shard</span>
+            <span id="ui-cryptoshard" class="currency-val">0</span>
+          </div>
+          <!-- Fix 3: Crypto Shard passive rate display (2/s base, 4/s with Queen) -->
+          <div class="currency-row passive-rate">
+            <span id="ui-shard-rate" style="color:#7B2FBE;font-size:7px;">+2/s [PAUSED]</span>
+          </div>
+          <div class="currency-row passive-rate">
+            <span id="ui-passive-rate" style="color:#39FF14;font-size:7px;">+1.0 bits/dtk</span>
+          </div>
+        </div>
+
+        <!-- SECTION: Hero Buy Panel (legacy anchor kept for compatibility) -->
+        <div class="sidebar-section" id="sidebar-hero-buy">
+          <div class="sidebar-section-title">DEPLOY HERO</div>
+          <div id="hero-icons"></div>
+        </div>
+
+      </aside>
+
+      <!-- Canvas fills remaining space -->
+      <canvas id="gameCanvas"></canvas>
+
+    </div><!-- /game-main -->
+
+    <!-- Wave start button overlay -->
+    <div id="wave-start-overlay">
+      <button id="btn-next-wave" onclick="startNextWave()">MULAI WAVE BERIKUTNYA</button>
+    </div>
+
+    <!-- Tower popup -->
+    <div id="tower-popup" style="display:none;">
+      <div id="tower-popup-content"></div>
+    </div>
+
+    <!-- Legacy hero upgrade panel (hidden; keeps event delegation in ui.js working) -->
+    <div id="hero-upgrade-panel" style="display:none;">
+      <div id="hero-upgrade-panel-content"></div>
+    </div>
+
+    <!-- Difficulty badge in corner -->
+    <div id="difficulty-badge"></div>
+    <!-- Fix 4: Map direction label (spawn-side to core-side axis) -->
+    <div id="map-direction-label" title="Spawn side to core-side axis for this map"></div>
+
+    <!-- AUDIO MANAGER: Pause overlay dengan volume controls -->
+    <!-- Ditampilkan/disembunyikan oleh togglePause() di ui.js -->
+    <div id="pause-overlay" style="display:none;">
+      <div id="pause-overlay-inner">
+        <div class="pause-title">[ PAUSED ]</div>
+        <div class="audio-controls-panel" id="audio-panel-pause">
+          <div class="audio-panel-title">[ AUDIO SETTINGS ]</div>
+          <div class="audio-row">
+            <span class="audio-row-label">BGM</span>
+            <input type="range" class="audio-bgm-slider audio-slider"
+                   min="0" max="100" step="5" value="50"
+                   oninput="onBgmSliderChange(this.value)" />
+            <span class="audio-bgm-label audio-val-label">50%</span>
+          </div>
+          <div class="audio-row">
+            <span class="audio-row-label">SFX</span>
+            <input type="range" class="audio-sfx-slider audio-slider"
+                   min="0" max="100" step="5" value="50"
+                   oninput="onSfxSliderChange(this.value)" />
+            <span class="audio-sfx-label audio-val-label">50%</span>
+          </div>
+          <button class="audio-mute-btn" onclick="toggleMasterMute()">[SOUND ON]</button>
+        </div>
+        <button class="pause-resume-btn" onclick="togglePause()">[ RESUME ]</button>
+      </div>
+    </div>
+
+  </div><!-- /screen-game -->
+
+  <!-- =====================================================
+       SCREEN 4: Game Over
+  ====================================================== -->
+  <div id="screen-gameover" class="screen">
+    <div class="gameover-container">
+      <div class="gameover-title">SYSTEM CRASH</div>
+      <div class="gameover-subtitle">PPKD CORE SERVER TELAH HANCUR</div>
+      <div id="gameover-stats"></div>
+      <button class="btn-select" onclick="restartGame()" style="margin-top:20px;">[ RESTART ]</button>
+    </div>
+  </div>
+
+  <!-- JS Modules (order matters: constants first, then systems, then game entry) -->
+  <script src="js/constants.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/enemy.js"></script>
+  <script src="js/tower.js"></script>
+  <script src="js/hero.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/waves.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
