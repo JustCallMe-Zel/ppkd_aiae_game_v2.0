@@ -1,0 +1,8 @@
+{
+  "name": "PPKD AIAE VS BUG AND ERROS",
+  "description": "Retro cyberpunk arcade tower defense game where AIAE heroes defend the PPKD core against bugs and errors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

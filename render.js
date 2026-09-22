@@ -383,11 +383,14 @@ function _drawSpawnPortalTile(x, y, s) {
 // or drawTowerShape() with ctx.drawImage(), no other code changes needed.
 
 /**
- * Calculate visual tier from entity level (1-10).
- * Tier 1: Lv 1-3 | Tier 2: Lv 4-6 | Tier 3: Lv 7-9 | Tier 4 MAX: Lv 10
+ * Calculate visual tier from entity level (1-10+).
+ * Tier 1: Lv 1-2 | Tier 2: Lv 3-5 | Tier 3: Lv 6-9 | Tier 4 MAX: Lv 10+
  */
 function calcTier(level) {
-  return Math.min(4, Math.floor((level - 1) / 3) + 1);
+  if (level >= 10) return 4;
+  if (level >= 6) return 3;
+  if (level >= 3) return 2;
+  return 1;
 }
 
 // ------ HERO SHAPE HELPERS ------
@@ -396,7 +399,6 @@ function calcTier(level) {
  * drawHeroShape(ctx, hero, tier)
  * Renders the body of a hero at hero.x / hero.y for the given tier.
  * Wraps everything in ctx.save/restore. Does NOT draw CTRL/COMBAT/HP bar overlays.
- * TODO: replace with ctx.drawImage(sprites[hero.defId + '_t' + tier], ...) when assets are ready.
  */
 function drawHeroShape(ctx2, hero, tier) {
   const t = Date.now() / 1000;
@@ -408,384 +410,881 @@ function drawHeroShape(ctx2, hero, tier) {
   else if (hero.defId === 'queen') _drawQueenTier(ctx2, hx, hy, tier, t);
 }
 
-// --- Knight (tema #FF2D55) ---
+// =============================================================
+// --- KNIGHT (The Breaker, tema #FF2D55) -----------------------
+// =============================================================
+// Lv 1-2 (T1): Siluet Mecha Pedang Neon dengan bahu bersudut tajam.
+// Lv 3-5 (T2): Mecha Dual Cyber-Blades & Plasma Thrusters (asap piksel).
+// Lv 6-9 (T3): Greatsword energi & Layered Chestplate bertingkat.
+// Lv 10+ (T4): Juggernaut Mecha Titanium Cyber, perisai heksagonal, petir menyambar.
 function _drawKnightTier(c, hx, hy, tier, t) {
-  const s = 28;
+  const s = 30;
   c.save();
 
-  // Tier 3+: red motion-blur trail (drawn before body so it sits behind)
-  if (tier >= 3) {
-    for (let i = 1; i <= 3; i++) {
-      const alpha = 0.15 * (4 - i);
-      const oy = i * 5;
-      c.save();
-      c.globalAlpha = alpha;
-      c.fillStyle = COLORS.NEON_RED;
-      c.beginPath();
-      c.moveTo(hx, hy + oy - s / 2);
-      c.lineTo(hx + s / 2, hy + oy);
-      c.lineTo(hx, hy + oy + s / 2);
-      c.lineTo(hx - s / 2, hy + oy);
-      c.closePath();
-      c.fill();
-      c.restore();
-    }
-  }
-
-  // Tier 4: aura quake rings at ground level
+  // Tier 4: Juggernaut ground shockwave & crackling lightning
   if (tier >= 4) {
     const pulse = 0.5 + 0.5 * Math.sin(t * 6);
     c.save();
     c.globalAlpha = 0.35 * pulse;
     c.strokeStyle = COLORS.NEON_RED;
     c.lineWidth = 3;
-    for (let r = 10; r <= 30; r += 10) {
+    for (let r = 14; r <= 36; r += 11) {
       c.beginPath();
-      c.arc(hx, hy + s / 2, r, 0, Math.PI * 2);
+      c.arc(hx, hy + s * 0.45, r, 0, Math.PI * 2);
+      c.stroke();
+    }
+    c.restore();
+
+    // Crackling perimeter lightning arcs
+    c.save();
+    c.strokeStyle = Math.random() < 0.5 ? '#ffffff' : COLORS.NEON_RED;
+    c.lineWidth = 1.8;
+    c.shadowBlur = 10;
+    c.shadowColor = COLORS.NEON_RED;
+    for (let i = 0; i < 3; i++) {
+      const a = (t * 4 + i * (Math.PI * 2 / 3)) % (Math.PI * 2);
+      const lx1 = hx + Math.cos(a) * 16;
+      const ly1 = hy + Math.sin(a) * 16;
+      const lx2 = hx + Math.cos(a + 0.5) * 32;
+      const ly2 = hy + Math.sin(a + 0.5) * 32;
+      const mx = (lx1 + lx2) / 2 + (Math.random() - 0.5) * 12;
+      const my = (ly1 + ly2) / 2 + (Math.random() - 0.5) * 12;
+      c.beginPath();
+      c.moveTo(lx1, ly1);
+      c.lineTo(mx, my);
+      c.lineTo(lx2, ly2);
       c.stroke();
     }
     c.restore();
   }
 
-  // Core body: chest plate diamond
-  c.shadowBlur = tier >= 3 ? 18 : 10;
-  c.shadowColor = COLORS.NEON_RED;
-  c.beginPath();
-  c.moveTo(hx, hy - s / 2);
-  c.lineTo(hx + s / 2, hy);
-  c.lineTo(hx, hy + s / 2);
-  c.lineTo(hx - s / 2, hy);
-  c.closePath();
-  c.fillStyle = COLORS.NEON_RED;
-  c.fill();
-
-  // Tier 2+: shoulder pads (small neon triangles left & right)
+  // Tier 2+: Plasma Thrusters di punggung dengan efek asap piksel
   if (tier >= 2) {
-    c.fillStyle = '#ff6680';
-    [[hx - s / 2, hy], [hx + s / 2, hy]].forEach(([px, py]) => {
+    const thrusterY = hy + s * 0.1;
+    const thrusterOffsets = [-10, 10];
+    thrusterOffsets.forEach((ox) => {
+      // Thruster nozzles
+      c.save();
+      c.fillStyle = '#1e050b';
+      c.strokeStyle = COLORS.NEON_RED;
+      c.lineWidth = 1.2;
+      c.fillRect(hx + ox - 3, thrusterY, 6, 8);
+      c.strokeRect(hx + ox - 3, thrusterY, 6, 8);
+
+      // Exhaust flame flare
+      const flameH = 6 + Math.sin(t * 18 + ox) * 4;
+      c.fillStyle = '#ff6b00';
+      c.shadowBlur = 8;
+      c.shadowColor = '#ff3300';
       c.beginPath();
-      c.moveTo(px, py - 8);
-      c.lineTo(px + (px < hx ? -8 : 8), py);
-      c.lineTo(px, py + 8);
+      c.moveTo(hx + ox - 2.5, thrusterY + 8);
+      c.lineTo(hx + ox, thrusterY + 8 + flameH);
+      c.lineTo(hx + ox + 2.5, thrusterY + 8);
       c.closePath();
       c.fill();
+
+      // Pixel smoke particles puffing down-backward
+      for (let p = 0; p < 3; p++) {
+        const pCycle = (t * 6 + p * 0.33 + (ox > 0 ? 0.2 : 0)) % 1;
+        const px = hx + ox + (Math.sin(p * 2.5 + t * 4) * 5) * pCycle;
+        const py = thrusterY + 8 + pCycle * 22;
+        const pSize = 2.5 + pCycle * 3;
+        c.globalAlpha = (1 - pCycle) * 0.7;
+        c.fillStyle = pCycle < 0.4 ? '#ffaa00' : (pCycle < 0.7 ? '#662222' : '#331118');
+        c.fillRect(px - pSize / 2, py - pSize / 2, pSize, pSize);
+      }
+      c.restore();
     });
   }
 
-  // Tier 3+: cyber-plate overlay (inner rect outline)
+  // Tier 3+: Red motion-blur kinetic trail
   if (tier >= 3) {
-    c.strokeStyle = '#ffaaaa';
-    c.lineWidth = 1;
-    c.strokeRect(hx - 8, hy - 8, 16, 16);
-    // Visor flash
-    const visorAlpha = 0.6 + 0.4 * Math.sin(t * 4);
-    c.globalAlpha = visorAlpha;
-    c.fillStyle = '#ffffff';
-    c.fillRect(hx - 5, hy - 4, 10, 3);
-    c.globalAlpha = 1;
+    for (let i = 1; i <= 3; i++) {
+      const alpha = 0.12 * (4 - i);
+      const oy = i * 4;
+      c.save();
+      c.globalAlpha = alpha;
+      c.fillStyle = COLORS.NEON_RED;
+      c.beginPath();
+      c.moveTo(hx, hy + oy - s * 0.5);
+      c.lineTo(hx + s * 0.4, hy + oy);
+      c.lineTo(hx, hy + oy + s * 0.4);
+      c.lineTo(hx - s * 0.4, hy + oy);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
   }
 
-  c.shadowBlur = 0;
-
-  // Sword/energy blade (vertical line)
-  const swordW = tier >= 2 ? 4 : 2;
-  const swordH = tier >= 4 ? 24 : (tier >= 2 ? 18 : 12);
-  c.fillStyle = tier >= 4 ? '#ff88aa' : COLORS.GHOST_WHITE;
-  c.shadowBlur = tier >= 4 ? 12 : 4;
+  // === MAIN MECHA CHASSIS ===
+  c.save();
+  c.shadowBlur = tier >= 3 ? 18 : 10;
   c.shadowColor = COLORS.NEON_RED;
-  c.fillRect(hx + s / 2 + 2, hy - swordH / 2, swordW, swordH);
 
-  // Tier 2+: cleave arc
-  if (tier >= 2) {
-    const arcAlpha = 0.25 + 0.25 * Math.sin(t * 5);
+  if (tier >= 4) {
+    // TIER 4: Titanium Cyber Juggernaut Heavy Chassis
+    c.fillStyle = '#1e050d';
+    c.strokeStyle = COLORS.NEON_RED;
+    c.lineWidth = 2;
+    // Bulkhead torso
+    c.beginPath();
+    c.moveTo(hx - 14, hy - 14);
+    c.lineTo(hx + 14, hy - 14);
+    c.lineTo(hx + 17, hy - 2);
+    c.lineTo(hx + 10, hy + 15);
+    c.lineTo(hx - 10, hy + 15);
+    c.lineTo(hx - 17, hy - 2);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Titanium Cyber Heavy Pauldrons (Bahu Juggernaut)
+    [[-17, -1], [17, 1]].forEach(([ox, dir]) => {
+      c.fillStyle = '#2d0a14';
+      c.strokeStyle = '#ff6688';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(hx + ox, hy - 14);
+      c.lineTo(hx + ox + (dir * 9), hy - 10);
+      c.lineTo(hx + ox + (dir * 7), hy + 8);
+      c.lineTo(hx + ox, hy + 5);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    });
+  } else if (tier === 3) {
+    // TIER 3: Layered Chestplate Torso (Pelindung Dada Bertingkat)
+    c.fillStyle = '#18040a';
+    c.strokeStyle = COLORS.NEON_RED;
+    c.lineWidth = 1.5;
+    // Base mecha body
+    c.beginPath();
+    c.moveTo(hx, hy - s * 0.5);
+    c.lineTo(hx + s * 0.44, hy - s * 0.1);
+    c.lineTo(hx + s * 0.28, hy + s * 0.45);
+    c.lineTo(hx - s * 0.28, hy + s * 0.45);
+    c.lineTo(hx - s * 0.44, hy - s * 0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // 3-tier overlapping chestplate layers with glowing radiator grooves
+    for (let l = 0; l < 3; l++) {
+      const ly = hy - 6 + l * 6;
+      const lw = 16 - l * 3.5;
+      c.fillStyle = l === 0 ? '#380c18' : (l === 1 ? '#2b0712' : '#20050e');
+      c.strokeStyle = '#ff6688';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(hx - lw, ly);
+      c.lineTo(hx, ly - 3);
+      c.lineTo(hx + lw, ly);
+      c.lineTo(hx + lw - 2, ly + 5);
+      c.lineTo(hx, ly + 7);
+      c.lineTo(hx - lw + 2, ly + 5);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Glowing radiator vent line
+      c.strokeStyle = COLORS.NEON_RED;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(hx - lw + 3, ly + 3);
+      c.lineTo(hx + lw - 3, ly + 3);
+      c.stroke();
+    }
+  } else {
+    // TIER 1 & 2: Angular Mecha Torso
+    c.fillStyle = tier === 2 ? '#240610' : COLORS.NEON_RED;
+    c.strokeStyle = '#ff6688';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.moveTo(hx, hy - s * 0.5);
+    c.lineTo(hx + s * 0.45, hy - s * 0.05);
+    c.lineTo(hx + s * 0.25, hy + s * 0.45);
+    c.lineTo(hx - s * 0.25, hy + s * 0.45);
+    c.lineTo(hx - s * 0.45, hy - s * 0.05);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Sharp angular shoulder pauldrons (Lv 1-2 & Lv 3-5)
+    [[-s * 0.45, -1], [s * 0.45, 1]].forEach(([ox, dir]) => {
+      c.fillStyle = '#ff2d55';
+      c.strokeStyle = '#ffffff';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(hx + ox, hy - 10);
+      c.lineTo(hx + ox + (dir * (tier >= 2 ? 8 : 6)), hy - 5);
+      c.lineTo(hx + ox + (dir * (tier >= 2 ? 6 : 4)), hy + 7);
+      c.lineTo(hx + ox, hy + 4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    });
+  }
+
+  // Mecha glowing cybernetic visor slit
+  const visorAlpha = 0.7 + 0.3 * Math.sin(t * 5);
+  c.globalAlpha = visorAlpha;
+  c.fillStyle = '#00ffff';
+  c.shadowBlur = 8;
+  c.shadowColor = '#00ffff';
+  c.fillRect(hx - 6, hy - 8, 12, 3);
+  c.globalAlpha = 1;
+  c.restore();
+
+  // === WEAPONRY & SHIELDS ===
+  if (tier >= 4) {
+    // TIER 4: Hexagonal Energy Shield (Left arm) + Colossal Plasma Buster Greatsword (Right arm)
+    // Hexagonal energy barrier shield
+    const shieldPulse = 0.75 + 0.25 * Math.sin(t * 5);
+    c.save();
+    c.translate(hx - 18, hy);
+    c.globalAlpha = 0.8 * shieldPulse;
+    c.strokeStyle = COLORS.NEON_RED;
+    c.fillStyle = '#ff2d5533';
+    c.lineWidth = 2;
+    c.shadowBlur = 14;
+    c.shadowColor = COLORS.NEON_RED;
+    c.beginPath();
+    const shR = 14;
+    for (let i = 0; i < 6; i++) {
+      const sa = (i * Math.PI / 3);
+      const sx = Math.cos(sa) * shR;
+      const sy = Math.sin(sa) * shR;
+      if (i === 0) c.moveTo(sx, sy); else c.lineTo(sx, sy);
+    }
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Inner honeycomb grid lines
+    c.lineWidth = 1;
+    c.strokeStyle = '#ffffffaa';
+    c.beginPath();
+    c.moveTo(-shR * 0.5, 0); c.lineTo(shR * 0.5, 0);
+    c.moveTo(0, -shR * 0.6); c.lineTo(0, shR * 0.6);
+    c.stroke();
+    c.restore();
+
+    // Colossal Plasma Buster Greatsword (Right arm)
+    c.save();
+    c.translate(hx + 17, hy);
+    c.shadowBlur = 22;
+    c.shadowColor = '#ff0033';
+    // Greatsword heavy blade
+    c.fillStyle = '#ff0044';
+    c.fillRect(-4, -22, 8, 38);
+    c.fillStyle = '#ffffff';
+    c.fillRect(-1.5, -20, 3, 34);
+    // Crossguard & power hilt
+    c.fillStyle = '#330510';
+    c.strokeStyle = '#ff6688';
+    c.lineWidth = 1.5;
+    c.fillRect(-8, 14, 16, 5);
+    c.strokeRect(-8, 14, 16, 5);
+    c.restore();
+  } else if (tier === 3) {
+    // TIER 3: Energy Greatsword (Right arm) with sweeping cleave aura
+    c.save();
+    c.translate(hx + 14, hy - 2);
+    c.shadowBlur = 16;
+    c.shadowColor = COLORS.NEON_RED;
+    // Energy Greatsword
+    c.fillStyle = '#ff2d55';
+    c.fillRect(-3, -18, 6, 32);
+    c.fillStyle = '#ffc0cb';
+    c.fillRect(-1, -16, 2, 28);
+    // Hilt & pommel
+    c.fillStyle = '#220005';
+    c.fillRect(-6, 12, 12, 4);
+    c.restore();
+
+    // Sweeping cleave arc
+    const arcAlpha = 0.35 + 0.25 * Math.sin(t * 6);
+    c.save();
     c.globalAlpha = arcAlpha;
     c.strokeStyle = COLORS.NEON_RED;
-    c.lineWidth = tier >= 4 ? 3 : 1.5;
+    c.lineWidth = 2.5;
     c.beginPath();
-    c.arc(hx, hy, s * 0.8, -Math.PI / 6, Math.PI / 3);
+    c.arc(hx, hy, s * 0.9, -Math.PI / 4, Math.PI / 2.5);
     c.stroke();
-    c.globalAlpha = 1;
+    c.restore();
+  } else if (tier === 2) {
+    // TIER 2: Dual Cyber-Blades (swords in both hands)
+    [[-13, -1], [13, 1]].forEach(([ox, dir]) => {
+      c.save();
+      c.translate(hx + ox, hy);
+      c.shadowBlur = 10;
+      c.shadowColor = COLORS.NEON_RED;
+      c.fillStyle = dir < 0 ? '#ff4d6d' : '#ff2d55';
+      c.fillRect(-1.5, -13, 3, 24);
+      c.fillStyle = '#ffffff';
+      c.fillRect(-0.5, -11, 1, 20);
+      c.restore();
+    });
+  } else {
+    // TIER 1: Single Neon Sword
+    c.save();
+    c.translate(hx + 12, hy);
+    c.shadowBlur = 8;
+    c.shadowColor = COLORS.NEON_RED;
+    c.fillStyle = '#ff2d55';
+    c.fillRect(-1.5, -11, 3, 20);
+    c.fillStyle = '#ffffff';
+    c.fillRect(-0.5, -9, 1, 16);
+    c.restore();
   }
 
-  // Tier 4: Plasma Buster -- glowing wide sword replacing thin blade
-  if (tier >= 4) {
-    c.shadowBlur = 20;
-    c.shadowColor = '#ff0044';
-    c.fillStyle = '#ff0044';
-    c.fillRect(hx + s / 2 + 2, hy - 14, 7, 28);
-    const energyAlpha = 0.4 + 0.4 * Math.abs(Math.sin(t * 8));
-    c.globalAlpha = energyAlpha;
-    c.fillStyle = '#ffcccc';
-    c.fillRect(hx + s / 2 + 3, hy - 12, 5, 24);
-    c.globalAlpha = 1;
-  }
-
-  c.shadowBlur = 0;
-
-  // Inner initial
-  c.fillStyle = COLORS.VOID_BLACK;
-  c.font = 'bold 11px monospace';
+  // Inner initial insignia
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 9px monospace';
   c.textAlign = 'center';
-  c.fillText('K', hx, hy + 4);
+  c.fillText('K', hx, hy + 3);
   c.restore();
 }
 
-// --- King (tema #00FFFF) ---
+// =============================================================
+// --- KING (The Architect, tema #00FFFF) -----------------------
+// =============================================================
+// Lv 1-2 (T1): Mahkota Holografik bercahaya dengan inti kristal melayang.
+// Lv 3-5 (T2): Mahkota lempeng perisai heksagonal yang berputar melingkari inti.
+// Lv 6-9 (T3): Mini-Spire Cybernetic dengan pilar rune data berkilau.
+// Lv 10+ (T4): Benteng Holografik Raksasa berstruktur Octagon Quantum dengan Core Energy Orb besar & aura pulsa melingkar.
 function _drawKingTier(c, hx, hy, tier, t, hero) {
-  const s = 28;
+  const s = 30;
   c.save();
 
-  // Pulsing ground ring (all tiers, more rings at higher tier)
-  const ringCount = tier;
+  // Ground pulse rings (all tiers, expanding outwards)
+  const ringCount = tier >= 4 ? 3 : (tier >= 2 ? 2 : 1);
   for (let i = 0; i < ringCount; i++) {
-    const phase = ((t * 0.8 + i * 0.4) % 1);
-    const r = 12 + phase * (tier >= 2 ? 28 : 16);
-    const alpha = (1 - phase) * 0.3;
+    const phase = ((t * 0.7 + i * 0.35) % 1);
+    const r = 10 + phase * (tier >= 4 ? 36 : (tier >= 2 ? 24 : 15));
+    const alpha = (1 - phase) * (tier >= 4 ? 0.45 : 0.25);
     c.save();
     c.globalAlpha = alpha;
     c.strokeStyle = COLORS.NEON_CYAN;
-    c.lineWidth = 1;
+    c.lineWidth = tier >= 4 ? 2 : 1.2;
     c.beginPath();
-    c.arc(hx, hy, r, 0, Math.PI * 2);
+    c.arc(hx, hy + s * 0.3, r, 0, Math.PI * 2);
     c.stroke();
     c.restore();
   }
 
-  // Tier 3+: binary text orbit
-  if (tier >= 3) {
-    const chars = ['0', '1', '0', '1', '1', '0'];
-    chars.forEach((ch, i) => {
-      const a = t * 1.2 + i * (Math.PI * 2 / chars.length);
-      const rx = hx + Math.cos(a) * 22;
-      const ry = hy + Math.sin(a) * 22;
-      c.save();
-      c.globalAlpha = 0.5;
-      c.fillStyle = COLORS.NEON_CYAN;
-      c.font = '6px monospace';
-      c.textAlign = 'center';
-      c.fillText(ch, rx, ry + 2);
-      c.restore();
-    });
-  }
-
-  // Core body: diamond cyan
-  c.shadowBlur = tier >= 3 ? 20 : 12;
-  c.shadowColor = COLORS.NEON_CYAN;
-  c.beginPath();
-  c.moveTo(hx, hy - s / 2);
-  c.lineTo(hx + s / 2, hy);
-  c.lineTo(hx, hy + s / 2);
-  c.lineTo(hx - s / 2, hy);
-  c.closePath();
-  c.fillStyle = COLORS.NEON_CYAN;
-  c.fill();
-  c.strokeStyle = '#ffffff88';
-  c.lineWidth = 1;
-  c.stroke();
-  c.shadowBlur = 0;
-
-  // Crown points
-  const crownPoints = tier >= 4 ? 5 : 3;
-  const crownY = hy - s / 2 - (tier >= 2 ? 2 : 0);
-  const crownFloat = tier >= 2 ? Math.sin(t * 2) * 3 : 0;
-  c.strokeStyle = COLORS.NEON_CYAN;
-  c.lineWidth = 1.5;
-  c.shadowBlur = 6;
-  c.shadowColor = COLORS.NEON_CYAN;
-  for (let i = 0; i < crownPoints; i++) {
-    const cx2 = hx - 8 + i * (16 / (crownPoints - 1));
-    c.beginPath();
-    c.moveTo(cx2, crownY + crownFloat);
-    c.lineTo(cx2, crownY - 7 - (i === Math.floor(crownPoints / 2) ? 4 : 0) + crownFloat);
-    c.stroke();
-    c.fillStyle = COLORS.NEON_CYAN;
-    c.beginPath();
-    c.arc(cx2, crownY - 7 - (i === Math.floor(crownPoints / 2) ? 4 : 0) + crownFloat, 2, 0, Math.PI * 2);
-    c.fill();
-  }
-  // Tier 4: double crown (second row above)
   if (tier >= 4) {
-    const cr2Y = crownY - 14 + crownFloat;
-    c.globalAlpha = 0.7;
-    for (let i = 0; i < 3; i++) {
-      const cx2 = hx - 5 + i * 5;
+    // =========================================================
+    // TIER 4: Benteng Holografik Raksasa (Octagon Quantum Fortress)
+    // =========================================================
+    const octR = 24;
+
+    // Ground aura pulsa melingkar di dasarnya
+    const basePulse = 0.6 + 0.4 * Math.sin(t * 4);
+    c.save();
+    c.globalAlpha = 0.3 * basePulse;
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(hx, hy, octR + 8, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+
+    // Octagon Quantum fortress perimeter wall
+    c.save();
+    c.shadowBlur = 20;
+    c.shadowColor = COLORS.NEON_CYAN;
+    c.fillStyle = '#041822';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 2;
+    c.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const oa = (i * Math.PI / 4) - Math.PI / 8;
+      const px = hx + Math.cos(oa) * octR;
+      const py = hy + Math.sin(oa) * octR;
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // 8 Bastion node towers at the vertices
+    for (let i = 0; i < 8; i++) {
+      const oa = (i * Math.PI / 4) - Math.PI / 8;
+      const bx = hx + Math.cos(oa) * octR;
+      const by = hy + Math.sin(oa) * octR;
+      c.fillStyle = '#00ffff';
       c.beginPath();
-      c.moveTo(cx2, cr2Y);
-      c.lineTo(cx2, cr2Y - 5);
-      c.stroke();
-      c.beginPath();
-      c.arc(cx2, cr2Y - 5, 1.5, 0, Math.PI * 2);
+      c.arc(bx, by, 3, 0, Math.PI * 2);
       c.fill();
     }
-    c.globalAlpha = 1;
-  }
-  c.shadowBlur = 0;
-
-  // Tier 3-4: drone cubes orbiting
-  const droneCount = tier >= 4 ? 4 : (tier >= 3 ? 2 : 0);
-  for (let i = 0; i < droneCount; i++) {
-    const a = t * (tier >= 4 ? 2 : 1.5) + i * (Math.PI * 2 / droneCount);
-    const dr = 18 + (tier >= 4 ? 4 : 0);
-    const dx = hx + Math.cos(a) * dr;
-    const dy = hy + Math.sin(a) * dr * 0.5;
-    c.save();
-    c.shadowBlur = 8;
-    c.shadowColor = COLORS.NEON_CYAN;
-    c.fillStyle = '#006666';
-    c.strokeStyle = COLORS.NEON_CYAN;
-    c.lineWidth = 1;
-    c.fillRect(dx - 4, dy - 4, 8, 8);
-    c.strokeRect(dx - 4, dy - 4, 8, 8);
     c.restore();
-  }
 
-  // Tier 4: light beam pillar upward
-  if (tier >= 4) {
-    const beamAlpha = 0.15 + 0.1 * Math.sin(t * 3);
+    // Rotating Quantum Rings inside fortress
+    const qRot = t * 1.5;
     c.save();
-    c.globalAlpha = beamAlpha;
-    const grad = ctx.createLinearGradient(hx, hy - s / 2, hx, hy - 80);
-    grad.addColorStop(0, COLORS.NEON_CYAN);
-    grad.addColorStop(1, 'transparent');
+    c.strokeStyle = '#00ffff88';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.ellipse(hx, hy, octR * 0.7, octR * 0.35, qRot, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.ellipse(hx, hy, octR * 0.7, octR * 0.35, -qRot, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+
+    // Large Core Energy Orb (Core Energy Orb besar berdenyut)
+    const orbPulse = 0.85 + 0.15 * Math.sin(t * 6);
+    const orbR = 10 * orbPulse;
+    c.save();
+    c.shadowBlur = 25;
+    c.shadowColor = '#00ffff';
+    const grad = c.createRadialGradient(hx, hy, 1, hx, hy, orbR);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.5, '#00ffff');
+    grad.addColorStop(1, '#006688');
     c.fillStyle = grad;
-    c.fillRect(hx - 4, hy - 80, 8, 80 - s / 2);
+    c.beginPath();
+    c.arc(hx, hy, orbR, 0, Math.PI * 2);
+    c.fill();
+
+    // Arc sparks inside orb
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const sa = t * 8 + i * 2.1;
+      c.beginPath();
+      c.moveTo(hx + Math.cos(sa) * 3, hy + Math.sin(sa) * 3);
+      c.lineTo(hx + Math.cos(sa) * (orbR * 0.8), hy + Math.sin(sa) * (orbR * 0.8));
+      c.stroke();
+    }
     c.restore();
+
+  } else if (tier === 3) {
+    // =========================================================
+    // TIER 3: Mini-Spire Cybernetic dengan pilar rune data berkilau
+    // =========================================================
+    // Central hexagonal cybernetic spire
+    c.save();
+    c.shadowBlur = 18;
+    c.shadowColor = COLORS.NEON_CYAN;
+    c.fillStyle = '#041620';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 2;
+    // Spire obelisk
+    c.beginPath();
+    c.moveTo(hx, hy - 20); // apex
+    c.lineTo(hx + 9, hy - 6);
+    c.lineTo(hx + 7, hy + 12);
+    c.lineTo(hx - 7, hy + 12);
+    c.lineTo(hx - 9, hy - 6);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Spire internal energy core lines
+    c.strokeStyle = '#ffffffaa';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(hx, hy - 18);
+    c.lineTo(hx, hy + 10);
+    c.stroke();
+    c.restore();
+
+    // 3 Pilar Rune Data Berkilau (orbiting / flanking columns)
+    const runes = ['0', '1', 'Δ', '§', 'Ψ', '◊'];
+    for (let p = 0; p < 3; p++) {
+      const pa = (p * Math.PI * 2 / 3) + t * 0.8;
+      const pr = 18;
+      const px = hx + Math.cos(pa) * pr;
+      const py = hy + Math.sin(pa) * (pr * 0.6);
+
+      // Vertical energy conduit pillar
+      c.save();
+      c.globalAlpha = 0.7;
+      c.strokeStyle = '#00ffff66';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(px, py - 14);
+      c.lineTo(px, py + 10);
+      c.stroke();
+
+      // Floating rune symbol rising up the pillar
+      const runeCycle = (t * 1.5 + p * 0.33) % 1;
+      const rIdx = Math.floor((t * 2 + p) % runes.length);
+      const runeY = py + 10 - runeCycle * 24;
+      c.fillStyle = '#ffffff';
+      c.shadowBlur = 8;
+      c.shadowColor = COLORS.NEON_CYAN;
+      c.font = 'bold 7px monospace';
+      c.textAlign = 'center';
+      c.fillText(runes[rIdx], px, runeY);
+      c.restore();
+    }
+
+    // Spire Crown floating at apex
+    c.save();
+    c.shadowBlur = 12;
+    c.shadowColor = COLORS.NEON_CYAN;
+    c.fillStyle = '#00ffff';
+    c.beginPath();
+    c.arc(hx, hy - 20, 3.5, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+  } else {
+    // =========================================================
+    // TIER 1 & 2: Mahkota Holografik bercahaya + Inti Kristal Melayang
+    // (Lv 3-5 adds rotating hexagonal shield plates)
+    // =========================================================
+    const floatY = Math.sin(t * 3) * 2.5;
+
+    // Inti Kristal Melayang (Floating multifaceted crystal octahedron)
+    c.save();
+    c.translate(hx, hy + floatY);
+    c.shadowBlur = tier >= 2 ? 16 : 10;
+    c.shadowColor = COLORS.NEON_CYAN;
+
+    // Crystal outer diamond
+    c.fillStyle = '#04222c';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.moveTo(0, -11);
+    c.lineTo(9, 0);
+    c.lineTo(0, 11);
+    c.lineTo(-9, 0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Crystal internal facets
+    c.strokeStyle = '#ffffffaa';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(0, -11); c.lineTo(0, 11);
+    c.moveTo(-9, 0);  c.lineTo(9, 0);
+    c.stroke();
+
+    // Glowing core center
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(0, 0, 2.5, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+    // Mahkota Holografik bercahaya (hovering above the crystal)
+    const crownY = hy - 14 + floatY;
+    c.save();
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 1.5;
+    c.shadowBlur = 10;
+    c.shadowColor = COLORS.NEON_CYAN;
+    c.beginPath();
+    c.moveTo(hx - 10, crownY + 2);
+    c.lineTo(hx - 10, crownY - 6);
+    c.lineTo(hx - 5, crownY - 2);
+    c.lineTo(hx, crownY - 9);
+    c.lineTo(hx + 5, crownY - 2);
+    c.lineTo(hx + 10, crownY - 6);
+    c.lineTo(hx + 10, crownY + 2);
+    c.stroke();
+    // Crown tips glowing nodes
+    c.fillStyle = '#ffffff';
+    [-10, 0, 10].forEach(ox => {
+      c.beginPath();
+      c.arc(hx + ox, crownY - (ox === 0 ? 9 : 6), 1.8, 0, Math.PI * 2);
+      c.fill();
+    });
+    c.restore();
+
+    // TIER 2: Lempeng Perisai Heksagonal yang berputar melingkari inti
+    if (tier >= 2) {
+      const shieldCount = 3;
+      for (let i = 0; i < shieldCount; i++) {
+        const sa = t * 2.2 + (i * Math.PI * 2 / shieldCount);
+        const srX = 18;
+        const srY = 10;
+        const sx = hx + Math.cos(sa) * srX;
+        const sy = hy + floatY + Math.sin(sa) * srY;
+
+        c.save();
+        c.translate(sx, sy);
+        c.shadowBlur = 8;
+        c.shadowColor = COLORS.NEON_CYAN;
+        c.fillStyle = '#00ffff33';
+        c.strokeStyle = '#00ffff';
+        c.lineWidth = 1.2;
+        // Hexagonal mini plate
+        c.beginPath();
+        const hexR = 4.5;
+        for (let j = 0; j < 6; j++) {
+          const ha = (j * Math.PI / 3);
+          const hpx = Math.cos(ha) * hexR;
+          const hpy = Math.sin(ha) * hexR;
+          if (j === 0) c.moveTo(hpx, hpy); else c.lineTo(hpx, hpy);
+        }
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.restore();
+      }
+    }
   }
 
-  // Inner initial
-  c.fillStyle = COLORS.VOID_BLACK;
-  c.font = 'bold 11px monospace';
+  // Initial letter
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 9px monospace';
   c.textAlign = 'center';
-  c.fillText('K', hx, hy + 4);
+  c.fillText('K', hx, hy + 3);
   c.restore();
 }
 
-// --- Queen (tema #7B2FBE) ---
+// =============================================================
+// --- QUEEN (The Foundry, tema #7B2FBE / #CC44FF) --------------
+// =============================================================
+// Lv 1-2 (T1): Matriks Obelisk Server bertingkat dengan alur jalur sirkuit.
+// Lv 3-5 (T2): Obelisk terbelah dua bagian melayang (Floating Dual-Tower) dengan kilatan transfer data.
+// Lv 6-9 (T3): Menara Komputer Quantum berbentuk Hex-Pyramid bersudut tajam.
+// Lv 10+ (T4): Quantum Core Sanctum 2x2 tile dengan kabel serat optik neon menyebar di lantai.
 function _drawQueenTier(c, hx, hy, tier, t) {
-  const s = 28;
+  const s = 30;
   c.save();
 
-  // Tier 2+: float-up purple particles on passive generation
-  if (tier >= 2) {
-    for (let i = 0; i < tier; i++) {
-      const pCycle = (t * 0.7 + i * 0.33) % 1;
-      const px = hx + (i % 2 === 0 ? -10 : 10) * (1 - pCycle * 0.5);
-      const py = hy + s / 2 - pCycle * 26;
-      c.save();
-      c.globalAlpha = (1 - pCycle) * 0.6;
-      c.fillStyle = COLORS.DEEP_PURPLE;
-      c.beginPath();
-      c.arc(px, py, 3, 0, Math.PI * 2);
-      c.fill();
-      c.restore();
-    }
+  // Passive generation rising crystal sparks (all tiers)
+  for (let i = 0; i < tier + 1; i++) {
+    const pCycle = (t * 0.7 + i * 0.28) % 1;
+    const px = hx + (i % 2 === 0 ? -12 : 12) * (1 - pCycle * 0.4);
+    const py = hy + s * 0.4 - pCycle * 28;
+    c.save();
+    c.globalAlpha = (1 - pCycle) * 0.65;
+    c.fillStyle = '#cc44ff';
+    c.shadowBlur = 6;
+    c.shadowColor = '#cc44ff';
+    c.fillRect(px - 1.5, py - 1.5, 3, 3);
+    c.restore();
   }
 
-  // Tier 4: portal ring at feet
   if (tier >= 4) {
-    const portalAlpha = 0.3 + 0.2 * Math.sin(t * 4);
+    // =========================================================
+    // TIER 4: Quantum Core Sanctum 2x2 tile dengan kabel serat optik neon
+    // =========================================================
+    // Sprawling neon fiber optic cables spreading across the floor
     c.save();
-    c.globalAlpha = portalAlpha;
+    c.shadowBlur = 8;
+    c.shadowColor = '#cc44ff';
+    c.strokeStyle = '#cc44ff99';
+    c.lineWidth = 1.5;
+
+    // 8 directional branching fiber optic lines
+    const angles = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, 5*Math.PI/4, 3*Math.PI/2, 7*Math.PI/4];
+    angles.forEach((a, idx) => {
+      const len1 = 14;
+      const len2 = 26 + (idx % 2 === 0 ? 6 : 0);
+      const x1 = hx + Math.cos(a) * len1;
+      const y1 = hy + Math.sin(a) * len1;
+      const x2 = hx + Math.cos(a + 0.15) * len2;
+      const y2 = hy + Math.sin(a + 0.15) * len2;
+      c.beginPath();
+      c.moveTo(hx, hy);
+      c.lineTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.stroke();
+
+      // Glowing data node terminal at cable ends
+      c.fillStyle = idx % 2 === 0 ? '#00ffff' : '#ff00ff';
+      c.beginPath();
+      c.arc(x2, y2, 2.5, 0, Math.PI * 2);
+      c.fill();
+    });
+    c.restore();
+
+    // Outer sanctum containment ring
+    const sRingAlpha = 0.4 + 0.3 * Math.sin(t * 3);
+    c.save();
+    c.globalAlpha = sRingAlpha;
     c.strokeStyle = '#cc44ff';
     c.lineWidth = 2;
-    c.shadowBlur = 12;
+    c.shadowBlur = 14;
     c.shadowColor = '#cc44ff';
     c.beginPath();
-    c.ellipse(hx, hy + s / 2, 18, 7, 0, 0, Math.PI * 2);
+    c.arc(hx, hy, 22, 0, Math.PI * 2);
     c.stroke();
-    // Lightning sparks around portal
-    for (let i = 0; i < 4; i++) {
-      const sa = (t * 3 + i * Math.PI / 2) % (Math.PI * 2);
-      const sx = hx + Math.cos(sa) * 18;
-      const sy = hy + s / 2 + Math.sin(sa) * 7;
-      const ex = sx + (Math.random() - 0.5) * 8;
-      const ey = sy + (Math.random() - 0.5) * 5;
+    c.restore();
+
+    // Central Quantum Core: spinning hypercube / tesseract
+    const coreRot = t * 1.8;
+    c.save();
+    c.translate(hx, hy);
+    c.rotate(coreRot);
+    c.fillStyle = '#220436';
+    c.strokeStyle = '#ee88ff';
+    c.lineWidth = 1.8;
+    c.shadowBlur = 18;
+    c.shadowColor = '#ee88ff';
+    c.strokeRect(-9, -9, 18, 18);
+    c.fillRect(-9, -9, 18, 18);
+
+    // Inner nested counter-rotating diamond
+    c.rotate(-coreRot * 2);
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(0, -7); c.lineTo(7, 0); c.lineTo(0, 7); c.lineTo(-7, 0);
+    c.closePath();
+    c.stroke();
+
+    // Glowing singularity center
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(0, 0, 3, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+  } else if (tier === 3) {
+    // =========================================================
+    // TIER 3: Menara Komputer Quantum Hex-Pyramid bersudut tajam
+    // =========================================================
+    const hexH = 24;
+    const hexW = 16;
+    c.save();
+    c.shadowBlur = 16;
+    c.shadowColor = '#cc44ff';
+
+    // Hex-pyramid structure
+    c.fillStyle = '#1c052c';
+    c.strokeStyle = '#cc66ff';
+    c.lineWidth = 1.8;
+    c.beginPath();
+    c.moveTo(hx, hy - hexH * 0.6); // Sharp peak
+    c.lineTo(hx + hexW * 0.6, hy - hexH * 0.1);
+    c.lineTo(hx + hexW * 0.5, hy + hexH * 0.5);
+    c.lineTo(hx, hy + hexH * 0.65);
+    c.lineTo(hx - hexW * 0.5, hy + hexH * 0.5);
+    c.lineTo(hx - hexW * 0.6, hy - hexH * 0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Prismatic facet lines
+    c.strokeStyle = '#ee99ffaa';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(hx, hy - hexH * 0.6); c.lineTo(hx, hy + hexH * 0.65);
+    c.moveTo(hx, hy - hexH * 0.6); c.lineTo(hx + hexW * 0.5, hy + hexH * 0.5);
+    c.moveTo(hx, hy - hexH * 0.6); c.lineTo(hx - hexW * 0.5, hy + hexH * 0.5);
+    c.stroke();
+
+    // Levitating quantum containment ring
+    const qRingAlpha = 0.5 + 0.3 * Math.sin(t * 4);
+    c.globalAlpha = qRingAlpha;
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.ellipse(hx, hy, hexW * 0.85, 6, 0, 0, Math.PI * 2);
+    c.stroke();
+
+    // Glowing core jewel at center
+    c.globalAlpha = 1;
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(hx, hy - 2, 3, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+  } else if (tier === 2) {
+    // =========================================================
+    // TIER 2: Obelisk terbelah dua bagian melayang (Floating Dual-Tower)
+    // dengan kilatan transfer data di tengahnya
+    // =========================================================
+    const bobL = Math.sin(t * 3.5) * 2.5;
+    const bobR = Math.cos(t * 3.5) * 2.5;
+
+    // Left floating tower
+    c.save();
+    c.shadowBlur = 10;
+    c.shadowColor = '#cc44ff';
+    c.fillStyle = '#1e0530';
+    c.strokeStyle = '#cc44ff';
+    c.lineWidth = 1.5;
+    c.fillRect(hx - 13, hy - 14 + bobL, 8, 26);
+    c.strokeRect(hx - 13, hy - 14 + bobL, 8, 26);
+
+    // Right floating tower
+    c.fillRect(hx + 5, hy - 14 + bobR, 8, 26);
+    c.strokeRect(hx + 5, hy - 14 + bobR, 8, 26);
+
+    // Circuit traces on twin towers
+    c.strokeStyle = '#ee88ff88';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(hx - 9, hy - 10 + bobL); c.lineTo(hx - 9, hy + 8 + bobL);
+    c.moveTo(hx + 9, hy - 10 + bobR); c.lineTo(hx + 9, hy + 8 + bobR);
+    c.stroke();
+
+    // Kilatan transfer data di tengahnya (continuous lightning bridge & data sparks)
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1.8;
+    c.shadowBlur = 8;
+    c.shadowColor = '#00ffff';
+    const numBridges = 3;
+    for (let b = 0; b < numBridges; b++) {
+      const by = hy - 8 + b * 8 + Math.sin(t * 12 + b) * 2;
+      const midJitter = (Math.random() - 0.5) * 4;
       c.beginPath();
-      c.moveTo(sx, sy);
-      c.lineTo(ex, ey);
+      c.moveTo(hx - 5, by + bobL * 0.5);
+      c.lineTo(hx + midJitter, by + (bobL + bobR) * 0.25);
+      c.lineTo(hx + 5, by + bobR * 0.5);
       c.stroke();
     }
     c.restore();
-  }
 
-  // Octagon body
-  c.shadowBlur = tier >= 3 ? 18 : 10;
-  c.shadowColor = COLORS.DEEP_PURPLE;
-  c.beginPath();
-  const octR = s / 2;
-  for (let i = 0; i < 8; i++) {
-    const a = (i * Math.PI / 4) - Math.PI / 8;
-    const px = hx + Math.cos(a) * octR;
-    const py = hy + Math.sin(a) * octR;
-    if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
-  }
-  c.closePath();
-  c.fillStyle = COLORS.DEEP_PURPLE;
-  c.fill();
-  c.strokeStyle = '#cc88ff';
-  c.lineWidth = tier >= 4 ? 2 : 1;
-  c.stroke();
-  c.shadowBlur = 0;
-
-  // Crystal shards around octagon
-  const shardCount = tier >= 2 ? 3 : 1;
-  for (let i = 0; i < shardCount; i++) {
-    const baseAngle = (i * Math.PI * 2 / shardCount) - Math.PI / 2;
-    const floatOffset = tier >= 2 ? Math.sin(t * 2 + i * 1.5) * 4 : 0;
-    const shardDist = tier >= 4 ? 20 : (tier >= 2 ? 17 : 13);
-    const sx = hx + Math.cos(baseAngle) * shardDist;
-    const sy = hy + Math.sin(baseAngle) * shardDist + floatOffset;
-    const shardSize = tier >= 4 ? 8 : (tier >= 2 ? 5 : 3);
+  } else {
+    // =========================================================
+    // TIER 1: Matriks Obelisk Server bertingkat dengan alur jalur sirkuit
+    // =========================================================
     c.save();
-    c.shadowBlur = tier >= 4 ? 12 : 5;
-    c.shadowColor = '#cc88ff';
-    c.fillStyle = '#cc88ff';
-    c.beginPath();
-    c.moveTo(sx, sy - shardSize);
-    c.lineTo(sx + shardSize / 2, sy);
-    c.lineTo(sx, sy + shardSize / 2);
-    c.lineTo(sx - shardSize / 2, sy);
-    c.closePath();
-    c.fill();
-    c.restore();
-  }
-
-  // Tier 3+: horizontal energy ring through body
-  if (tier >= 3) {
-    const ringAlpha = 0.4 + 0.3 * Math.sin(t * 5);
-    c.save();
-    c.globalAlpha = ringAlpha;
-    c.strokeStyle = '#cc44ff';
-    c.lineWidth = 2;
     c.shadowBlur = 8;
     c.shadowColor = '#cc44ff';
-    c.beginPath();
-    c.ellipse(hx, hy, octR + 4, 5, 0, 0, Math.PI * 2);
-    c.stroke();
-    c.restore();
-  }
+    // Stepped server obelisk chassis
+    c.fillStyle = '#1c052c';
+    c.strokeStyle = '#cc44ff';
+    c.lineWidth = 1.5;
 
-  // Tier 4: giant pulsing crystal overlay
-  if (tier >= 4) {
-    const pulse = 0.7 + 0.3 * Math.sin(t * 3);
-    c.save();
-    c.globalAlpha = 0.35 * pulse;
-    c.fillStyle = '#dd88ff';
+    // Bottom step
+    c.fillRect(hx - 11, hy + 2, 22, 12);
+    c.strokeRect(hx - 11, hy + 2, 22, 12);
+    // Mid step
+    c.fillRect(hx - 8, hy - 8, 16, 10);
+    c.strokeRect(hx - 8, hy - 8, 16, 10);
+    // Top step
+    c.fillRect(hx - 5, hy - 16, 10, 8);
+    c.strokeRect(hx - 5, hy - 16, 10, 8);
+
+    // Glowing circuit paths running through the matrix
+    c.strokeStyle = '#ee88ff';
+    c.lineWidth = 1;
     c.beginPath();
-    c.moveTo(hx, hy - octR - 12);
-    c.lineTo(hx + 6, hy - octR);
-    c.lineTo(hx, hy - octR + 6);
-    c.lineTo(hx - 6, hy - octR);
-    c.closePath();
-    c.fill();
+    c.moveTo(hx - 3, hy - 14); c.lineTo(hx - 3, hy + 10);
+    c.moveTo(hx + 3, hy - 14); c.lineTo(hx + 3, hy + 10);
+    c.moveTo(hx - 8, hy); c.lineTo(hx + 8, hy);
+    c.stroke();
+
+    // Blinking server status LEDs
+    [-6, 0, 6].forEach((ox, i) => {
+      const ledOn = Math.sin(t * 4 + i * 2) > 0;
+      c.fillStyle = ledOn ? '#00ffff' : '#441166';
+      c.beginPath();
+      c.arc(hx + ox, hy + 8, 1.8, 0, Math.PI * 2);
+      c.fill();
+    });
     c.restore();
   }
 
   // Inner initial
   c.fillStyle = '#ffffff';
-  c.font = 'bold 11px monospace';
+  c.font = 'bold 9px monospace';
   c.textAlign = 'center';
-  c.fillText('Q', hx, hy + 4);
+  c.fillText('Q', hx, hy + 3);
   c.restore();
 }
 
@@ -820,18 +1319,11 @@ function drawTowerShape(ctx2, tower, tier) {
 // =============================================================
 /**
  * _drawDataMinerTier(c, tower, tier)
- * Renders the Data Miner economy tower with five distinct visual stages
- * mapped directly to the GDD v1.1 specification:
- *
- *   Levels 1–4  (tier 1-2) : Metallic server/rig block + small green LED indicator.
- *   Levels 5–9  (tier 3)   : Neon cyan outline glow + subtle floating pixel particles.
- *   Level  10   (tier 4)   : Complex glowing core, intense cyan/yellow pulse, permanent
- *                            aura particle effects (two counter-rotating orbits, outer ring).
- *
- * Flash reaction: whenever shootFlash > 0 (set by _updateMinerTick on each tick),
- * the central LED expands and brightens — a clear per-tick production signal.
- *
- * Color palette: Digital Green (#39FF14), Neon Cyan (#00FFFF), Electric Yellow (#FFD700).
+ * Renders the Data Miner support tower:
+ *   Lv 1–2 (T1): Rig Penambang Server bersiluet Rack Array dengan LED berkedip.
+ *   Lv 3–5 (T2): Pumping Rig mekanis yang bergerak naik-turun memproses Crypto Shards.
+ *   Lv 6–9 (T3): Holographic Data Well berbentuk struktur piringan berputar dengan sumur cahaya biner.
+ *   Lv 10+ (T4): Quantum Crypto Forge raksasa yang memancarkan efek gelombang energi finansial ke sekitar.
  */
 function _drawDataMinerTier(c, tower, tier) {
   const t = Date.now() / 1000;
@@ -840,199 +1332,285 @@ function _drawDataMinerTier(c, tower, tier) {
   const cx2 = bx + tower.size / 2;
   const cy2 = by + tower.size / 2;
   const s = tower.size;
-  const lvl = tower.level;
   const flashActive = tower.shootFlash > 0;
 
   c.save();
 
-  // ── TIER 4 / Level 10 MAX ───────────────────────────────────
-  // Permanent outer aura ring in cyan that rotates.
-  // Second outer arc in Electric Yellow rotates counter-clockwise.
   if (tier >= 4) {
-    // Outer aura glow halo (Electric Yellow)
-    const auraAlpha = 0.35 + 0.35 * Math.abs(Math.sin(t * 2.5));
+    // =========================================================
+    // TIER 4: Quantum Crypto Forge raksasa & gelombang finansial
+    // =========================================================
+    // Gelombang energi finansial (golden and cyan resonant expanding shockwaves)
+    const waveCount = 3;
+    for (let w = 0; w < waveCount; w++) {
+      const wProg = (t * 0.8 + w * (1 / waveCount)) % 1;
+      const wR = (s / 2) + wProg * 24;
+      const wAlpha = (1 - wProg) * 0.45;
+      c.save();
+      c.globalAlpha = wAlpha;
+      c.strokeStyle = w % 2 === 0 ? '#FFD700' : '#39FF14';
+      c.lineWidth = 2.2;
+      c.shadowBlur = 10;
+      c.shadowColor = c.strokeStyle;
+      c.beginPath();
+      c.arc(cx2, cy2, wR, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
+    }
+
+    // Heavy Octagonal Forge Foundation
     c.save();
-    c.globalAlpha = auraAlpha;
-    c.shadowBlur = 30;
+    c.shadowBlur = 18;
     c.shadowColor = '#FFD700';
+    c.fillStyle = '#140c02';
     c.strokeStyle = '#FFD700';
-    c.lineWidth = 3;
-    c.beginPath();
-    c.arc(cx2, cy2, s / 2 + 13, 0, Math.PI * 2);
-    c.stroke();
-    c.restore();
-
-    // Rotating arc 1 (Neon Cyan)
-    const rot1 = t * 2.0;
-    c.save();
-    c.strokeStyle = '#00FFFF';
-    c.lineWidth = 2.5;
-    c.globalAlpha = 0.85;
-    c.shadowBlur = 12;
-    c.shadowColor = '#00FFFF';
-    c.beginPath();
-    c.arc(cx2, cy2, s / 2 + 9, rot1, rot1 + Math.PI * 1.5);
-    c.stroke();
-    c.restore();
-
-    // Rotating arc 2 counter-clockwise (Deep Purple)
-    const rot2 = -t * 1.5;
-    c.save();
-    c.strokeStyle = '#7B2FBE';
     c.lineWidth = 2;
-    c.globalAlpha = 0.7;
     c.beginPath();
-    c.arc(cx2, cy2, s / 2 + 5, rot2, rot2 + Math.PI * 1.2);
+    const fR = s / 2 + 1;
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) - Math.PI / 8;
+      const px = cx2 + Math.cos(a) * fR;
+      const py = cy2 + Math.sin(a) * fR;
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+    c.fill();
     c.stroke();
     c.restore();
-  }
 
-  // ── LEVELS 5–9: Neon Cyan outline glow ──────────────────────
-  // GDD v1.1 §3 Visual Specs: Levels 5-9 get cyan neon outline.
-  // Uses lvl directly (not calcTier) because calcTier gives tier3 only at L7.
-  if (lvl >= 5 && lvl < 10) {
-    const pulse3 = 0.4 + 0.6 * Math.abs(Math.sin(t * 3.2));
+    // Counter-rotating magnetic accelerator rings
+    const rot1 = t * 2.2;
     c.save();
-    c.shadowBlur = 22 * pulse3;
+    c.strokeStyle = '#FFD700';
+    c.lineWidth = 2;
+    c.shadowBlur = 10;
+    c.shadowColor = '#FFD700';
+    c.beginPath();
+    c.ellipse(cx2, cy2, s * 0.45, s * 0.22, rot1, 0, Math.PI * 2);
+    c.stroke();
+    // Counter ring (Cyan/Emerald)
+    c.strokeStyle = '#00FFFF';
+    c.beginPath();
+    c.ellipse(cx2, cy2, s * 0.45, s * 0.22, -rot1, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+
+    // Floating Crypto Gem Shard cluster at the core
+    const gemPulse = 0.85 + 0.15 * Math.sin(t * 6);
+    c.save();
+    c.translate(cx2, cy2);
+    c.shadowBlur = 20;
+    c.shadowColor = '#FFD700';
+    c.fillStyle = flashActive ? '#ffffff' : '#FFD700';
+    c.beginPath();
+    c.moveTo(0, -7 * gemPulse);
+    c.lineTo(6 * gemPulse, 0);
+    c.lineTo(0, 7 * gemPulse);
+    c.lineTo(-6 * gemPulse, 0);
+    c.closePath();
+    c.fill();
+
+    // Floating orbit micro-shards
+    for (let m = 0; m < 3; m++) {
+      const ma = -t * 3.5 + m * (Math.PI * 2 / 3);
+      const mx = Math.cos(ma) * 11;
+      const my = Math.sin(ma) * 7;
+      c.fillStyle = '#cc44ff';
+      c.fillRect(mx - 1.5, my - 1.5, 3, 3);
+    }
+    c.restore();
+
+  } else if (tier === 3) {
+    // =========================================================
+    // TIER 3: Holographic Data Well (Piringan Berputar & Sumur Cahaya Biner)
+    // =========================================================
+    // Base well foundation
+    c.save();
+    c.fillStyle = '#051815';
+    c.strokeStyle = '#00FFFF';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(cx2, cy2 + 2, s * 0.42, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Sumur Cahaya Biner: vertical light beams and rising binary code
+    const streamAlpha = 0.4 + 0.3 * Math.sin(t * 5);
+    c.globalAlpha = streamAlpha;
+    const wellGrad = c.createLinearGradient(cx2, cy2 + 8, cx2, cy2 - 14);
+    wellGrad.addColorStop(0, '#00ffff88');
+    wellGrad.addColorStop(1, 'transparent');
+    c.fillStyle = wellGrad;
+    c.fillRect(cx2 - 8, cy2 - 14, 16, 22);
+
+    // Rising binary particles ('0' & '1')
+    c.font = 'bold 7px monospace';
+    c.fillStyle = '#ffffff';
+    c.textAlign = 'center';
+    for (let b = 0; b < 3; b++) {
+      const bCycle = (t * 2.0 + b * 0.33) % 1;
+      const bxPos = cx2 - 5 + b * 5;
+      const byPos = cy2 + 6 - bCycle * 20;
+      c.globalAlpha = (1 - bCycle) * 0.9;
+      c.fillText(b % 2 === 0 ? '1' : '0', bxPos, byPos);
+    }
+    c.restore();
+
+    // Holographic spinning disc structure levitating above well
+    const discRot = t * 1.8;
+    c.save();
+    c.translate(cx2, cy2 - 4);
+    c.shadowBlur = 14;
     c.shadowColor = '#00FFFF';
-    c.globalAlpha = pulse3 * 0.6;
     c.strokeStyle = '#00FFFF';
     c.lineWidth = 2;
-    c.strokeRect(bx - 4, by - 4, s + 8, s + 8);
+    c.beginPath();
+    c.ellipse(0, 0, s * 0.44, s * 0.2, discRot, 0, Math.PI * 2);
+    c.stroke();
+    // Inner concentric disc
+    c.strokeStyle = '#39FF14';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.ellipse(0, 0, s * 0.25, s * 0.12, -discRot, 0, Math.PI * 2);
+    c.stroke();
+    // Center node
+    c.fillStyle = flashActive ? '#ffffff' : '#00ffff';
+    c.beginPath();
+    c.arc(0, 0, 3, 0, Math.PI * 2);
+    c.fill();
     c.restore();
-  }
 
-  // ── BODY: Tier 1 (Lv1-3) = flat PCB box; Tier 2+ (Lv4+) = Server Mining Rig ──
-  if (tier >= 2) {
-    // ── SERVER MINING RIG / DRILL STRUCTURE ─────────────────────
-    // Main rig chassis (slightly taller trapezoid shape)
-    c.shadowBlur = lvl >= 7 ? 18 : 10;
-    c.shadowColor = '#39FF14';
-    c.fillStyle = '#071a07';
-    // Base platform
-    c.fillRect(bx + 2, by + s * 0.55, s - 4, s * 0.4);
+  } else if (tier === 2) {
+    // =========================================================
+    // TIER 2: Pumping Rig mekanis (naik-turun memproses Crypto Shards)
+    // =========================================================
+    // Rig Base and Stanchion
+    c.save();
+    c.fillStyle = '#0a1a0f';
     c.strokeStyle = '#39FF14';
     c.lineWidth = 1.5;
-    c.strokeRect(bx + 2, by + s * 0.55, s - 4, s * 0.4);
-    // Narrow upper shaft
-    c.fillStyle = '#0a2010';
-    c.fillRect(bx + s * 0.35, by + s * 0.18, s * 0.30, s * 0.40);
-    c.strokeStyle = '#39FF1488';
-    c.strokeRect(bx + s * 0.35, by + s * 0.18, s * 0.30, s * 0.40);
-    c.shadowBlur = 0;
+    // Platform
+    c.fillRect(bx + 2, by + s * 0.55, s - 4, s * 0.38);
+    c.strokeRect(bx + 2, by + s * 0.55, s - 4, s * 0.38);
 
-    // Drill bit — animated rotating triangle
-    const drillRot = t * 4.5;
-    c.save();
-    c.translate(cx2, by + s * 0.17);
-    c.rotate(drillRot);
-    c.fillStyle = '#39FF14';
-    c.shadowBlur = 6; c.shadowColor = '#39FF14';
+    // Stanchion A-frame uprights
     c.beginPath();
-    c.moveTo(0, -6); c.lineTo(5, 4); c.lineTo(-5, 4);
-    c.closePath(); c.fill();
-    c.restore();
+    c.moveTo(bx + 6, by + s * 0.55);
+    c.lineTo(cx2, by + s * 0.2);
+    c.lineTo(bx + s - 6, by + s * 0.55);
+    c.stroke();
 
-    // Status transfer LEDs (4 blinking lights on base platform)
-    const ledStates = [0.9, 1.4, 0.6, 1.1];
-    ledStates.forEach((interval, i) => {
-      const on = Math.sin(t * Math.PI * 2 / interval + i * 1.2) > 0;
-      const lx = bx + 6 + i * ((s - 12) / 3);
-      const ly = by + s * 0.75;
-      c.save();
-      c.fillStyle = on ? (i === 2 ? '#00FFFF' : '#39FF14') : '#0a1a0a';
-      if (on) { c.shadowBlur = 8; c.shadowColor = i === 2 ? '#00FFFF' : '#39FF14'; }
-      c.beginPath(); c.arc(lx, ly, 2.5, 0, Math.PI * 2); c.fill();
-      c.restore();
-    });
-
-    // Data stream beam (flashes during yield)
-    if (flashActive) {
-      const beamAlpha = 0.5 + 0.5 * (tower.shootFlash / 0.15);
-      c.save();
-      c.globalAlpha = beamAlpha * 0.8;
-      c.strokeStyle = '#39FF14';
-      c.lineWidth = 3;
-      c.shadowBlur = 14; c.shadowColor = '#39FF14';
-      c.beginPath();
-      c.moveTo(cx2, by + s * 0.18);
-      c.lineTo(cx2, by - 8);
-      c.stroke();
-      // Particle bits shooting upward
-      for (let bi = 0; bi < 3; bi++) {
-        const bpy = by + s * 0.18 - (bi * 7) - ((t * 30) % 14);
-        c.fillStyle = bi % 2 === 0 ? '#39FF14' : '#00FFFF';
-        c.shadowBlur = 6; c.shadowColor = c.fillStyle;
-        c.fillRect(cx2 - 2 + (bi - 1) * 4, bpy, 3, 3);
-      }
-      c.restore();
-    }
-  } else {
-    // ── FLAT PCB BOX (Lv1-3) ────────────────────────────────────
-    c.shadowBlur = 6;
-    c.shadowColor = '#39FF14';
-    c.fillStyle = '#071a07';
-    c.fillRect(bx, by, s, s);
+    // Animated walking-beam pumpjack rocking arm
+    const pumpAngle = Math.sin(t * 5) * 0.28;
+    c.save();
+    c.translate(cx2, by + s * 0.2);
+    c.rotate(pumpAngle);
+    // Rocker beam
+    c.fillStyle = '#1b3820';
     c.strokeStyle = '#39FF14';
-    c.lineWidth = 1;
-    c.strokeRect(bx, by, s, s);
-    c.shadowBlur = 0;
+    c.lineWidth = 1.5;
+    c.fillRect(-12, -2.5, 24, 5);
+    c.strokeRect(-12, -2.5, 24, 5);
+    // Counterweight on left end
+    c.fillStyle = '#08140b';
+    c.fillRect(-13, -4, 4, 8);
+    c.restore();
 
-    // Circuit trace lines
-    c.strokeStyle = '#39FF1444';
-    c.lineWidth = 1;
+    // Piston rod going down into the crucible on right end
+    const rodTopX = cx2 + Math.cos(pumpAngle) * 10;
+    const rodTopY = by + s * 0.2 + Math.sin(pumpAngle) * 10;
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 1.8;
     c.beginPath();
-    c.moveTo(bx + s * 0.18, by + s * 0.5);
-    c.lineTo(bx + s * 0.5,  by + s * 0.5);
-    c.lineTo(bx + s * 0.5,  by + s * 0.18);
+    c.moveTo(rodTopX, rodTopY);
+    c.lineTo(rodTopX, by + s * 0.65);
     c.stroke();
-    c.beginPath();
-    c.moveTo(bx + s * 0.82, by + s * 0.5);
-    c.lineTo(bx + s * 0.5,  by + s * 0.5);
-    c.lineTo(bx + s * 0.5,  by + s * 0.82);
-    c.stroke();
-  }
 
-  // ── SCAN-LINE pixel sweep (Levels 5+) ─────────────────────
-  if (lvl >= 5 && tier < 2) {
-    const scanY = by + ((t * 20) % s);
+    // Processing Crucible with Purple Crypto Shards being crushed
+    c.fillStyle = '#220830';
+    c.strokeStyle = '#cc44ff';
+    c.lineWidth = 1.5;
+    c.fillRect(rodTopX - 4, by + s * 0.62, 8, 8);
+    c.strokeRect(rodTopX - 4, by + s * 0.62, 8, 8);
+
+    // Crypto shard purple crystal glowing inside
+    c.fillStyle = flashActive ? '#ffffff' : '#cc44ff';
+    c.shadowBlur = 8;
+    c.shadowColor = '#cc44ff';
+    c.beginPath();
+    c.moveTo(rodTopX, by + s * 0.64);
+    c.lineTo(rodTopX + 2.5, by + s * 0.67);
+    c.lineTo(rodTopX, by + s * 0.7);
+    c.lineTo(rodTopX - 2.5, by + s * 0.67);
+    c.closePath();
+    c.fill();
+    c.restore();
+
+  } else {
+    // =========================================================
+    // TIER 1: Rig Penambang Server bersiluet Rack Array dengan LED berkedip
+    // =========================================================
     c.save();
-    c.globalAlpha = 0.25;
-    c.fillStyle = '#00FFFF';
-    c.fillRect(bx + 1, scanY, s - 2, 2);
+    c.shadowBlur = 8;
+    c.shadowColor = '#39FF14';
+    // Server Rack Chassis
+    c.fillStyle = '#061609';
+    c.strokeStyle = '#39FF14';
+    c.lineWidth = 1.5;
+    c.fillRect(bx + 2, by + 2, s - 4, s - 4);
+    c.strokeRect(bx + 2, by + 2, s - 4, s - 4);
+
+    // Rack Array horizontal blade servers (3 tiers)
+    for (let slot = 0; slot < 3; slot++) {
+      const slotY = by + 6 + slot * 6.5;
+      c.fillStyle = slot % 2 === 0 ? '#0b2410' : '#081c0d';
+      c.strokeStyle = '#39FF1466';
+      c.lineWidth = 1;
+      c.fillRect(bx + 4, slotY, s - 8, 5);
+      c.strokeRect(bx + 4, slotY, s - 8, 5);
+
+      // Ventilation grilles
+      c.strokeStyle = '#1d5225';
+      for (let g = 0; g < 3; g++) {
+        c.beginPath();
+        c.moveTo(bx + 7 + g * 2.5, slotY + 1);
+        c.lineTo(bx + 7 + g * 2.5, slotY + 4);
+        c.stroke();
+      }
+
+      // Blinking status LEDs on each server blade
+      const isGreen = Math.sin(t * 6 + slot * 2) > 0;
+      const isCyan = Math.sin(t * 4 + slot * 1.5) > 0;
+      c.fillStyle = isGreen ? '#39FF14' : '#0a3010';
+      c.beginPath();
+      c.arc(bx + s - 9, slotY + 2.5, 1.3, 0, Math.PI * 2);
+      c.fill();
+
+      c.fillStyle = isCyan ? '#00FFFF' : '#062024';
+      c.beginPath();
+      c.arc(bx + s - 6, slotY + 2.5, 1.3, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    // Extraction drill / bus connector in bottom center
+    c.fillStyle = '#39FF14';
+    c.beginPath();
+    c.moveTo(cx2 - 3, by + s - 2);
+    c.lineTo(cx2 + 3, by + s - 2);
+    c.lineTo(cx2, by + s + 2);
+    c.closePath();
+    c.fill();
     c.restore();
   }
 
-  // ── LED INDICATOR (Lv1-3 PCB only) ───────────────────────────
-  if (tier < 2) {
-    const ledX = bx + s - 6;
-    const ledY2 = by + 6;
-    const ledR  = flashActive ? 5 : 3;
-    const ledColor = flashActive ? '#39FF14' : (lvl >= 2 ? '#00FFFF' : '#39FF14');
-    if (flashActive) {
-      c.save();
-      c.shadowBlur = 16; c.shadowColor = ledColor;
-      c.fillStyle = ledColor;
-      c.beginPath(); c.arc(ledX, ledY2, ledR, 0, Math.PI * 2); c.fill();
-      c.restore();
-    } else {
-      c.fillStyle = ledColor + '88';
-      c.beginPath(); c.arc(ledX, ledY2, ledR, 0, Math.PI * 2); c.fill();
-    }
-  }
-
-  // ── LEVEL 10 MAX: inner cyan/yellow pulsing core ring ────────
-  if (lvl >= 10) {
-    const coreP = 0.5 + 0.5 * Math.sin(t * 5);
+  // Yield production flash flare
+  if (flashActive) {
     c.save();
-    c.globalAlpha = 0.4 + 0.4 * coreP;
-    c.strokeStyle = coreP > 0.5 ? '#FFD700' : '#00FFFF';
-    c.lineWidth = 2;
-    c.shadowBlur = 16 * coreP;
-    c.shadowColor = c.strokeStyle;
-    c.beginPath();
-    c.arc(cx2, cy2, s * 0.3, 0, Math.PI * 2);
-    c.stroke();
+    c.globalAlpha = 0.5;
+    c.fillStyle = '#ffffff';
+    c.shadowBlur = 14;
+    c.shadowColor = '#39FF14';
+    c.fillRect(bx, by, s, s);
     c.restore();
   }
 
@@ -1702,7 +2280,13 @@ function drawGcPulseEffects() {
   });
 }
 
+// =============================================================
 // --- Packet Turret (Kinetic, tema #8A8A8A / accent #00FFFF) ---
+// Lv 1–2: Turret Gatling berlaras ganda (Dual-Barrel).
+// Lv 3–5: Dudukan tripod bersudut + Laser Sight Line bertitik merah.
+// Lv 6–9: Triple-Barrel Gatling dengan magazin energi berputar di belakang.
+// Lv 10+: Quad-Plasma Cannon bersenjata berat dengan siluet komputasi kompleks.
+// =============================================================
 function _drawPacketTurretTier(c, tower, tier) {
   const t = Date.now() / 1000;
   const x = tower.col * TILE_SIZE;
@@ -1711,30 +2295,26 @@ function _drawPacketTurretTier(c, tower, tier) {
   const by = y + (TILE_SIZE - tower.size) / 2;
   const cx2 = bx + tower.size / 2;
   const cy2 = by + tower.size / 2;
+  const s = tower.size;
   const angle = tower.barrelAngle !== undefined ? tower.barrelAngle : -Math.PI / 2;
+  const isShooting = tower.shootFlash > 0;
 
-  // Tier 4: permanent cyan glow background
+  c.save();
+
+  // ── BASE & MOUNTING CHASSIS ──────────────────────────────────
   if (tier >= 4) {
+    // TIER 4: Siluet mekanis komputasi kompleks & Heavy Quad Base
+    // Octagonal heavy armor base with micro-circuit tracings
     c.save();
-    c.shadowBlur = 20;
+    c.shadowBlur = 18;
     c.shadowColor = COLORS.NEON_CYAN;
+    c.fillStyle = '#06131c';
     c.strokeStyle = COLORS.NEON_CYAN;
     c.lineWidth = 2;
-    c.strokeRect(bx - 3, by - 3, tower.size + 6, tower.size + 6);
-    c.restore();
-  }
-
-  // Base shape
-  if (tier >= 3) {
-    // Octagon base
-    c.save();
-    c.fillStyle = tower.color;
-    c.strokeStyle = COLORS.NEON_CYAN;
-    c.lineWidth = 1.5;
     c.beginPath();
-    const or = tower.size / 2;
+    const or = s / 2 + 2;
     for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI / 4 - Math.PI / 8;
+      const a = (i * Math.PI / 4) - Math.PI / 8;
       const px = cx2 + Math.cos(a) * or;
       const py = cy2 + Math.sin(a) * or;
       if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
@@ -1742,53 +2322,266 @@ function _drawPacketTurretTier(c, tower, tier) {
     c.closePath();
     c.fill();
     c.stroke();
+
+    // Computational microchip circuit grid in the chassis
+    c.strokeStyle = '#00ffff55';
+    c.lineWidth = 1;
+    c.strokeRect(cx2 - 7, cy2 - 7, 14, 14);
+    c.beginPath();
+    c.moveTo(cx2 - 7, cy2); c.lineTo(cx2 + 7, cy2);
+    c.moveTo(cx2, cy2 - 7); c.lineTo(cx2, cy2 + 7);
+    c.stroke();
     c.restore();
-  } else {
-    // Square base
-    c.fillStyle = tower.color;
-    c.fillRect(bx, by, tower.size, tower.size);
-    if (tier >= 2) {
-      // Double outline
-      c.strokeStyle = COLORS.NEON_CYAN;
-      c.lineWidth = 1;
-      c.strokeRect(bx - 1, by - 1, tower.size + 2, tower.size + 2);
-      c.strokeRect(bx - 3, by - 3, tower.size + 6, tower.size + 6);
+
+  } else if (tier === 3) {
+    // TIER 3: Heavy fortified beveled base with heatsink grilles
+    c.save();
+    c.fillStyle = '#101a22';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 1.6;
+    // Hexagonal reinforced turret mount
+    c.beginPath();
+    const hr = s / 2;
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      const px = cx2 + Math.cos(a) * hr;
+      const py = cy2 + Math.sin(a) * hr;
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
     }
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Heatsink ventilation slots
+    c.strokeStyle = '#00ffff66';
+    c.lineWidth = 1;
+    for (let i = -1; i <= 1; i++) {
+      c.beginPath();
+      c.moveTo(cx2 - 7, cy2 + i * 4);
+      c.lineTo(cx2 + 7, cy2 + i * 4);
+      c.stroke();
+    }
+    c.restore();
+
+  } else if (tier === 2) {
+    // TIER 2: Dudukan tripod bersudut (3 angled outrigger stabilizer legs)
+    c.save();
+    c.fillStyle = '#121e25';
+    c.strokeStyle = '#448899';
+    c.lineWidth = 1.5;
+    c.fillRect(bx + 3, by + 3, s - 6, s - 6);
+    c.strokeRect(bx + 3, by + 3, s - 6, s - 6);
+
+    // 3 Angled Tripod Outrigger Legs
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 2.2;
+    const legAngles = [Math.PI * 0.5, Math.PI * 1.15, Math.PI * 1.85];
+    legAngles.forEach(la => {
+      const lx1 = cx2 + Math.cos(la) * (s * 0.3);
+      const ly1 = cy2 + Math.sin(la) * (s * 0.3);
+      const lx2 = cx2 + Math.cos(la) * (s * 0.55);
+      const ly2 = cy2 + Math.sin(la) * (s * 0.55);
+      c.beginPath();
+      c.moveTo(lx1, ly1);
+      c.lineTo(lx2, ly2);
+      c.stroke();
+      // Foot pad
+      c.fillStyle = '#00ffff';
+      c.fillRect(lx2 - 2, ly2 - 2, 4, 4);
+    });
+    c.restore();
+
+  } else {
+    // TIER 1: Compact beveled steel chassis box with cyan edge highlights
+    c.save();
+    c.fillStyle = '#18242c';
+    c.strokeStyle = '#00ffff88';
+    c.lineWidth = 1.2;
+    c.fillRect(bx + 2, by + 2, s - 4, s - 4);
+    c.strokeRect(bx + 2, by + 2, s - 4, s - 4);
+    c.strokeStyle = '#335566';
+    c.strokeRect(bx + 5, by + 5, s - 10, s - 10);
+    c.restore();
   }
 
-  // Barrels: 1 at T1, 2 at T2, 4 mini at T3, 2 wide at T4
+  // ── TURRET ROTATING HOUSING & BARRELS ─────────────────────────
   c.save();
   c.translate(cx2, cy2);
   c.rotate(angle);
-  c.fillStyle = COLORS.NEON_CYAN;
-  if (tier <= 1) {
-    // Single barrel
-    c.fillRect(-2, -tower.size / 2 - 12, 4, 14);
-  } else if (tier === 2) {
-    // Twin barrel
-    c.fillRect(-5, -tower.size / 2 - 12, 3, 14);
-    c.fillRect(2, -tower.size / 2 - 12, 3, 14);
-  } else if (tier === 3) {
-    // 4 mini gatling barrels
-    [-6, -2, 2, 6].forEach(ox => {
-      c.fillRect(ox - 1.5, -tower.size / 2 - 12, 3, 14);
-    });
-  } else {
-    // Railgun: 2 wide moncong with T4 glow
-    c.shadowBlur = 12;
+
+  if (tier >= 4) {
+    // TIER 4: Quad-Plasma Cannon
+    // Rotating cooling vents at rear
+    const ventPulse = 0.5 + 0.5 * Math.sin(t * 8);
+    c.fillStyle = `rgba(0, 255, 255, ${0.4 + 0.5 * ventPulse})`;
+    c.fillRect(-6, s * 0.25, 12, 4);
+
+    // Central Heavy Plasma Turret Hub
+    c.fillStyle = '#0a2332';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, 9, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // 4 Plasma Cannon Barrels in diamond/square array
+    c.shadowBlur = isShooting ? 16 : 8;
     c.shadowColor = COLORS.NEON_CYAN;
-    c.fillRect(-5, -tower.size / 2 - 16, 4, 18);
-    c.fillRect(1, -tower.size / 2 - 16, 4, 18);
-    // tip caps
-    c.fillStyle = '#ffffff';
-    c.fillRect(-5, -tower.size / 2 - 17, 4, 2);
-    c.fillRect(1, -tower.size / 2 - 17, 4, 2);
-    c.shadowBlur = 0;
+    const barrelOffsets = [-6, -2, 2, 6];
+    barrelOffsets.forEach((bxOff, idx) => {
+      const bLen = (idx === 1 || idx === 2) ? 19 : 17;
+      c.fillStyle = '#103040';
+      c.strokeStyle = COLORS.NEON_CYAN;
+      c.lineWidth = 1;
+      c.fillRect(bxOff - 1.5, -bLen, 3, bLen);
+      c.strokeRect(bxOff - 1.5, -bLen, 3, bLen);
+
+      // Glowing Plasma Bore Chamber
+      c.fillStyle = isShooting ? '#ffffff' : COLORS.NEON_CYAN;
+      c.fillRect(bxOff - 1, -bLen, 2, 4);
+    });
+
+    // Central cyan plasma accumulator core
+    c.fillStyle = isShooting ? '#ffffff' : '#00ffff';
+    c.beginPath();
+    c.arc(0, 0, 4, 0, Math.PI * 2);
+    c.fill();
+
+  } else if (tier === 3) {
+    // TIER 3: Triple-Barrel Gatling + Magazin energi berputar di belakang
+    // Rotating Energy Drum Magazine at the rear
+    const drumRot = t * 4;
+    c.save();
+    c.fillStyle = '#0b1f2b';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(0, 9, 6, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Ammo power cells inside drum
+    for (let i = 0; i < 4; i++) {
+      const da = drumRot + (i * Math.PI / 2);
+      c.fillStyle = '#00ffff';
+      c.beginPath();
+      c.arc(Math.cos(da) * 3.5, 9 + Math.sin(da) * 3.5, 1.2, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+
+    // Main Gatling Turret Hub
+    c.fillStyle = '#152b38';
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(0, 0, 7.5, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Triple-Barrel Gatling
+    const tripleOffsets = [-4.5, 0, 4.5];
+    tripleOffsets.forEach((tx, idx) => {
+      const tLen = idx === 1 ? 17 : 15;
+      c.fillStyle = '#223d4d';
+      c.strokeStyle = COLORS.NEON_CYAN;
+      c.lineWidth = 1;
+      c.fillRect(tx - 1.2, -tLen, 2.5, tLen);
+      c.strokeRect(tx - 1.2, -tLen, 2.5, tLen);
+      // Muzzle tips
+      c.fillStyle = isShooting ? '#ffffff' : '#00ffff';
+      c.fillRect(tx - 1.2, -tLen, 2.5, 2);
+    });
+
+  } else if (tier === 2) {
+    // TIER 2: Dual-Barrel with Laser Sight Line bertitik merah
+    // Turret housing
+    c.fillStyle = '#1c2f3a';
+    c.strokeStyle = COLORS.NEON_CYAN;
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(0, 0, 6.5, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Dual heavy barrels
+    [-3.5, 3.5].forEach(dx => {
+      c.fillStyle = '#2a4352';
+      c.strokeStyle = COLORS.NEON_CYAN;
+      c.lineWidth = 1;
+      c.fillRect(dx - 1.5, -15, 3, 15);
+      c.strokeRect(dx - 1.5, -15, 3, 15);
+      // Cooling ring
+      c.fillStyle = '#00ffff88';
+      c.fillRect(dx - 2, -9, 4, 2);
+    });
+
+    // Laser Sight Line bertitik merah (protruding forward)
+    c.save();
+    c.strokeStyle = '#ff0033';
+    c.lineWidth = 1;
+    c.setLineDash([3, 3]);
+    c.beginPath();
+    c.moveTo(0, -15);
+    c.lineTo(0, -65);
+    c.stroke();
+    c.setLineDash([]);
+    // Bright pulsing red focal dot at laser tip
+    const laserPulse = 1.5 + 0.8 * Math.sin(t * 10);
+    c.fillStyle = '#ff0033';
+    c.shadowBlur = 8;
+    c.shadowColor = '#ff0033';
+    c.beginPath();
+    c.arc(0, -65, laserPulse, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+  } else {
+    // TIER 1: Turret Gatling berlaras ganda (Dual-Barrel)
+    // Turret housing
+    c.fillStyle = '#1c2d36';
+    c.strokeStyle = '#00ffffaa';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.arc(0, 0, 5.5, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Dual barrels
+    [-2.5, 2.5].forEach(dx => {
+      c.fillStyle = '#2e4450';
+      c.strokeStyle = '#00ffffaa';
+      c.lineWidth = 1;
+      c.fillRect(dx - 1.2, -13, 2.4, 13);
+      c.strokeRect(dx - 1.2, -13, 2.4, 13);
+      // Muzzle cap
+      c.fillStyle = '#00ffff';
+      c.fillRect(dx - 1.2, -13, 2.4, 2);
+    });
   }
+
+  // Muzzle flash on shoot
+  if (isShooting) {
+    c.fillStyle = '#ffffff';
+    c.shadowBlur = 14;
+    c.shadowColor = COLORS.NEON_CYAN;
+    c.beginPath();
+    c.arc(0, -20, 5, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  c.restore();
   c.restore();
 }
 
+// =============================================================
 // --- Firewall Cannon (Fire DoT, tema #FF2D55 / accent #FF6B00) ---
+// Lv 1–2: Tungku Plasma silinder dengan lidah api digital menyembur.
+// Lv 3–5: Kawah Inferno dengan cerobong ganda bersudut trapesium.
+// Lv 6–9: Reaktor Api Segitiga (Tri-Vent Engine) dengan pusaran partikel bara api.
+// Lv 10+: Volcanic Reactor Base (4 cerobong plasma) dengan efek gelombang panas berpendar.
+// =============================================================
 function _drawFirewallCannonTier(c, tower, tier) {
   const t = Date.now() / 1000;
   const x = tower.col * TILE_SIZE;
@@ -1797,114 +2590,261 @@ function _drawFirewallCannonTier(c, tower, tier) {
   const by = y + (TILE_SIZE - tower.size) / 2;
   const cx2 = bx + tower.size / 2;
   const cy2 = by + tower.size / 2;
+  const s = tower.size;
   const angle = tower.barrelAngle !== undefined ? tower.barrelAngle : -Math.PI / 2;
+  const isShooting = tower.shootFlash > 0;
 
-  // Tier 3-4: permanent ember sparks orbiting base
-  if (tier >= 3) {
-    const sparkCount = tier >= 4 ? 6 : 3;
-    for (let i = 0; i < sparkCount; i++) {
-      const sa = t * 2.5 + i * (Math.PI * 2 / sparkCount);
-      const sr = 16 + Math.sin(t * 4 + i) * 3;
-      const sx = cx2 + Math.cos(sa) * sr;
-      const sy = cy2 + Math.sin(sa) * sr;
-      c.save();
-      c.fillStyle = COLORS.RUST_ORANGE;
-      c.shadowBlur = 6;
-      c.shadowColor = COLORS.RUST_ORANGE;
+  c.save();
+
+  // ── BASE & INFERNO CASING ────────────────────────────────────
+  if (tier >= 4) {
+    // TIER 4: Volcanic Reactor Base (4 cerobong plasma) + gelombang panas berpendar
+    // Radiating thermal wave pulses
+    const waveProgress = (t * 0.9) % 1;
+    c.save();
+    c.globalAlpha = (1 - waveProgress) * 0.45;
+    c.strokeStyle = '#ff3300';
+    c.lineWidth = 2.5;
+    c.shadowBlur = 16;
+    c.shadowColor = '#ff2200';
+    c.beginPath();
+    c.arc(cx2, cy2, (s / 2) + waveProgress * 22, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+
+    // Heavy Volcanic Fortress Base
+    c.save();
+    c.shadowBlur = 18;
+    c.shadowColor = '#ff2200';
+    c.fillStyle = '#220608';
+    c.strokeStyle = '#ff3300';
+    c.lineWidth = 2;
+    c.fillRect(bx, by, s, s);
+    c.strokeRect(bx, by, s, s);
+
+    // 4 Corner Plasma Stack Chimneys
+    const stackOffsets = [
+      [-s * 0.35, -s * 0.35],
+      [s * 0.35, -s * 0.35],
+      [-s * 0.35, s * 0.35],
+      [s * 0.35, s * 0.35]
+    ];
+    stackOffsets.forEach(([sx, sy], idx) => {
+      c.fillStyle = '#140305';
+      c.strokeStyle = '#ff6600';
+      c.lineWidth = 1.2;
+      c.fillRect(cx2 + sx - 3, cy2 + sy - 3, 6, 6);
+      c.strokeRect(cx2 + sx - 3, cy2 + sy - 3, 6, 6);
+
+      // Venting plasma flame jet from chimney
+      const jetH = 3 + 2.5 * Math.sin(t * 12 + idx * 1.5);
+      c.fillStyle = idx % 2 === 0 ? '#ff2200' : '#ff9900';
       c.beginPath();
-      c.arc(sx, sy, 2, 0, Math.PI * 2);
+      c.moveTo(cx2 + sx - 2, cy2 + sy - 3);
+      c.lineTo(cx2 + sx, cy2 + sy - 3 - jetH);
+      c.lineTo(cx2 + sx + 2, cy2 + sy - 3);
+      c.closePath();
+      c.fill();
+    });
+    c.restore();
+
+  } else if (tier === 3) {
+    // TIER 3: Reaktor Api Segitiga (Tri-Vent Engine) + pusaran partikel bara api
+    // Swirling ember vortex orbiting the base
+    for (let i = 0; i < 5; i++) {
+      const ea = t * 3.2 + (i * Math.PI * 2 / 5);
+      const er = s * 0.46 + Math.sin(t * 6 + i) * 3;
+      const ex = cx2 + Math.cos(ea) * er;
+      const ey = cy2 + Math.sin(ea) * er;
+      c.save();
+      c.fillStyle = i % 2 === 0 ? '#ff6600' : '#ff0033';
+      c.shadowBlur = 8;
+      c.shadowColor = '#ff4400';
+      c.beginPath();
+      c.arc(ex, ey, 1.8, 0, Math.PI * 2);
       c.fill();
       c.restore();
     }
-  }
 
-  // Tier 4: intense red glow halo
-  if (tier >= 4) {
-    const glowAlpha = 0.2 + 0.1 * Math.sin(t * 5);
+    // Triangular Tri-Vent Engine Chassis
     c.save();
-    c.globalAlpha = glowAlpha;
-    c.shadowBlur = 30;
-    c.shadowColor = COLORS.NEON_RED;
-    c.fillStyle = COLORS.NEON_RED;
+    c.fillStyle = '#26080d';
+    c.strokeStyle = '#ff4400';
+    c.lineWidth = 1.8;
     c.beginPath();
-    c.arc(cx2, cy2, tower.size * 0.8, 0, Math.PI * 2);
-    c.fill();
-    c.restore();
-  }
-
-  // Base body
-  if (tier >= 3) {
-    // Circular reactor ring
-    c.save();
-    const pulseSz = tower.size * 0.6 + 2 * Math.sin(t * 5);
-    c.fillStyle = COLORS.DARK_MAROON;
-    c.beginPath();
-    c.arc(cx2, cy2, tower.size / 2, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = COLORS.RUST_ORANGE;
-    c.lineWidth = 2;
-    c.shadowBlur = 8;
-    c.shadowColor = COLORS.RUST_ORANGE;
-    c.beginPath();
-    c.arc(cx2, cy2, pulseSz, 0, Math.PI * 2);
-    c.stroke();
-    c.restore();
-  } else {
-    c.fillStyle = COLORS.DARK_MAROON;
-    c.fillRect(bx, by, tower.size, tower.size);
-    if (tier >= 2) {
-      // Cooling vents: horizontal lines on the side
-      c.strokeStyle = '#664400';
-      c.lineWidth = 1;
-      for (let i = 0; i < 3; i++) {
-        const vy = by + 5 + i * 8;
-        c.beginPath();
-        c.moveTo(bx, vy);
-        c.lineTo(bx + tower.size, vy);
-        c.stroke();
-      }
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2 / 3) - Math.PI / 2;
+      const px = cx2 + Math.cos(a) * (s * 0.48);
+      const py = cy2 + Math.sin(a) * (s * 0.48);
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
     }
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // 3 Exhaust vent nozzles at triangle vertices
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2 / 3) - Math.PI / 2;
+      const vx = cx2 + Math.cos(a) * (s * 0.44);
+      const vy = cy2 + Math.sin(a) * (s * 0.44);
+      c.fillStyle = '#ff3300';
+      c.beginPath();
+      c.arc(vx, vy, 2.5, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+
+  } else if (tier === 2) {
+    // TIER 2: Kawah Inferno dengan cerobong ganda bersudut trapesium
+    c.save();
+    c.fillStyle = '#22080c';
+    c.strokeStyle = '#ff5500';
+    c.lineWidth = 1.5;
+
+    // Trapezoidal housing
+    c.beginPath();
+    c.moveTo(bx + 4, by + s - 2);
+    c.lineTo(bx + s - 4, by + s - 2);
+    c.lineTo(bx + s - 1, by + 4);
+    c.lineTo(bx + 1, by + 4);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Cerobong ganda bersudut di kiri & kanan
+    [-8, 8].forEach(chX => {
+      c.fillStyle = '#180406';
+      c.strokeStyle = '#ff3300';
+      c.lineWidth = 1.2;
+      c.fillRect(cx2 + chX - 2.5, by + 2, 5, 8);
+      c.strokeRect(cx2 + chX - 2.5, by + 2, 5, 8);
+      // Small exhaust flame
+      const fH = 2 + 2 * Math.sin(t * 10 + chX);
+      c.fillStyle = '#ff7700';
+      c.fillRect(cx2 + chX - 1.5, by - fH, 3, fH);
+    });
+    c.restore();
+
+  } else {
+    // TIER 1: Tungku Plasma silinder dengan lidah api digital menyembur
+    c.save();
+    c.fillStyle = '#1c0608';
+    c.strokeStyle = '#ff2d55';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(cx2, cy2, s * 0.4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Rivets on cylinder perimeter
+    for (let r = 0; r < 4; r++) {
+      const ra = (r * Math.PI / 2) + Math.PI / 4;
+      c.fillStyle = '#ff6b00';
+      c.beginPath();
+      c.arc(cx2 + Math.cos(ra) * (s * 0.32), cy2 + Math.sin(ra) * (s * 0.32), 1.2, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
   }
 
-  // Barrel
+  // ── CANNON BARREL & DIGITAL FLAME EMITTER ─────────────────────
   c.save();
   c.translate(cx2, cy2);
   c.rotate(angle);
-  c.fillStyle = COLORS.RUST_ORANGE;
-  if (tier <= 1) {
-    // Single cylinder moncong
-    c.beginPath();
-    c.arc(0, -tower.size / 2 - 6, 3, 0, Math.PI * 2);
-    c.fill();
-    c.fillRect(-3, -tower.size / 2 - 8, 6, 10);
-  } else if (tier === 2) {
-    // Thick elongated barrel
-    c.fillRect(-4, -tower.size / 2 - 14, 8, 16);
+
+  // Digital flame tongues leaping from muzzle/core
+  const flameLength = (isShooting ? 16 : 8) + 4 * Math.sin(t * 14);
+  c.save();
+  c.shadowBlur = 12;
+  c.shadowColor = '#ff2200';
+  const flameGrad = c.createLinearGradient(0, -s * 0.3, 0, -s * 0.3 - flameLength);
+  flameGrad.addColorStop(0, '#ffffff');
+  flameGrad.addColorStop(0.3, '#ffcc00');
+  flameGrad.addColorStop(0.7, '#ff3300');
+  flameGrad.addColorStop(1, 'transparent');
+  c.fillStyle = flameGrad;
+  c.beginPath();
+  c.moveTo(-4, -s * 0.35);
+  c.lineTo(0, -s * 0.35 - flameLength);
+  c.lineTo(4, -s * 0.35);
+  c.closePath();
+  c.fill();
+  c.restore();
+
+  if (tier >= 4) {
+    // TIER 4: Heavy Magma Plasma Cannon Muzzle
+    c.fillStyle = '#1f0508';
+    c.strokeStyle = '#ff2200';
+    c.lineWidth = 2;
+    c.fillRect(-7, -s * 0.52, 14, 16);
+    c.strokeRect(-7, -s * 0.52, 14, 16);
+
+    // Glowing induction magma coils
+    for (let i = 0; i < 3; i++) {
+      c.fillStyle = '#ff8800';
+      c.fillRect(-8, -s * 0.48 + i * 4, 16, 1.8);
+    }
+    // Heavy flared crown muzzle
+    c.fillStyle = '#ff3300';
+    c.fillRect(-9, -s * 0.56, 18, 4);
+
   } else if (tier === 3) {
-    // Wide flamethrower muzzle
-    c.shadowBlur = 8;
-    c.shadowColor = COLORS.RUST_ORANGE;
-    c.fillRect(-5, -tower.size / 2 - 14, 10, 16);
-    c.fillStyle = '#ff4400';
-    c.beginPath();
-    c.arc(0, -tower.size / 2 - 14, 6, Math.PI, 0);
-    c.fill();
-  } else {
-    // Magma plasma ball muzzle
-    c.shadowBlur = 16;
-    c.shadowColor = '#ff2200';
-    c.fillRect(-6, -tower.size / 2 - 16, 12, 18);
-    const pulseBall = 5 + 2 * Math.abs(Math.sin(t * 7));
+    // TIER 3: Tri-Vent Flared Barrel
+    c.fillStyle = '#26080d';
+    c.strokeStyle = '#ff5500';
+    c.lineWidth = 1.6;
+    c.fillRect(-5.5, -s * 0.48, 11, 14);
+    c.strokeRect(-5.5, -s * 0.48, 11, 14);
+    // Flared muzzle
     c.fillStyle = '#ff6600';
     c.beginPath();
-    c.arc(0, -tower.size / 2 - 17, pulseBall, 0, Math.PI * 2);
+    c.moveTo(-7, -s * 0.52);
+    c.lineTo(7, -s * 0.52);
+    c.lineTo(5.5, -s * 0.46);
+    c.lineTo(-5.5, -s * 0.46);
+    c.closePath();
     c.fill();
-    c.shadowBlur = 0;
+
+  } else if (tier === 2) {
+    // TIER 2: Elongated Thermal Barrel
+    c.fillStyle = '#2a0a0f';
+    c.strokeStyle = '#ff4400';
+    c.lineWidth = 1.4;
+    c.fillRect(-4, -s * 0.45, 8, 13);
+    c.strokeRect(-4, -s * 0.45, 8, 13);
+    // Heat radiator rib
+    c.fillStyle = '#ff7700';
+    c.fillRect(-5, -s * 0.36, 10, 2);
+
+  } else {
+    // TIER 1: Cylindrical furnace nozzle
+    c.fillStyle = '#300a0f';
+    c.strokeStyle = '#ff2d55';
+    c.lineWidth = 1.2;
+    c.fillRect(-3, -s * 0.4, 6, 11);
+    c.strokeRect(-3, -s * 0.4, 6, 11);
   }
+
+  // Central molten core orb
+  const coreGlow = 0.8 + 0.2 * Math.sin(t * 8);
+  c.fillStyle = isShooting ? '#ffffff' : '#ff4400';
+  c.shadowBlur = 12;
+  c.shadowColor = '#ff2200';
+  c.beginPath();
+  c.arc(0, 0, (tier >= 4 ? 6 : 4) * coreGlow, 0, Math.PI * 2);
+  c.fill();
+
+  c.restore();
   c.restore();
 }
 
+// =============================================================
 // --- Logic Gate Array (Electric Chain, tema #FFD700 / accent #FFAA00) ---
+// Lv 1–2: Pemancar Prisma Segitiga bercabang listrik.
+// Lv 3–5: Rod Tesla bertingkat dengan bola konduktor melayang di puncaknya.
+// Lv 6–9: Menara Tesla Bintang-6 (Star-Node Tower) dengan piringan magnetik.
+// Lv 10+: Quantum Octagon Array dengan busur petir berantai (Chain Lightning) melingkar.
+// =============================================================
 function _drawLogicGateArrayTier(c, tower, tier) {
   const t = Date.now() / 1000;
   const x = tower.col * TILE_SIZE;
@@ -1913,136 +2853,232 @@ function _drawLogicGateArrayTier(c, tower, tier) {
   const by = y + (TILE_SIZE - tower.size) / 2;
   const cx2 = bx + tower.size / 2;
   const cy2 = by + tower.size / 2;
+  const s = tower.size;
   const angle = tower.barrelAngle !== undefined ? tower.barrelAngle : -Math.PI / 2;
 
-  // Tier 2+: pylon positions
-  const pylonAngles = tier >= 4
-    ? [0, Math.PI * 2 / 3, Math.PI * 4 / 3]
-    : [Math.PI * 0.75, Math.PI * 1.25];
-  const pylonRadius = tier >= 4 ? 18 : 14;
+  c.save();
 
-  // Tier 2+: spark arc between pylons (drawn first as background)
-  if (tier >= 2) {
-    const sparkAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 8));
-    c.save();
-    c.globalAlpha = sparkAlpha;
-    c.strokeStyle = COLORS.ELECTRIC_YELLOW;
-    c.lineWidth = 1;
-    c.shadowBlur = 6;
-    c.shadowColor = COLORS.ELECTRIC_YELLOW;
-    for (let i = 0; i < pylonAngles.length; i++) {
-      const j = (i + 1) % pylonAngles.length;
-      const x1 = cx2 + Math.cos(pylonAngles[i]) * pylonRadius;
-      const y1 = cy2 + Math.sin(pylonAngles[i]) * pylonRadius;
-      const x2 = cx2 + Math.cos(pylonAngles[j]) * pylonRadius;
-      const y2 = cy2 + Math.sin(pylonAngles[j]) * pylonRadius;
-      // Zigzag bolt
-      const midX = (x1 + x2) / 2 + (Math.random() - 0.5) * 6;
-      const midY = (y1 + y2) / 2 + (Math.random() - 0.5) * 6;
-      c.beginPath();
-      c.moveTo(x1, y1);
-      c.lineTo(midX, midY);
-      c.lineTo(x2, y2);
-      c.stroke();
-    }
-    c.restore();
-  }
-
-  // Base body
-  c.fillStyle = tower.color;
   if (tier >= 4) {
-    // Hexagon base
+    // =========================================================
+    // TIER 4: Quantum Octagon Array & Busur Petir Berantai (Chain Lightning)
+    // =========================================================
+    // Octagonal Quantum Base
     c.save();
+    c.shadowBlur = 20;
+    c.shadowColor = COLORS.ELECTRIC_YELLOW;
+    c.fillStyle = '#141103';
     c.strokeStyle = COLORS.ELECTRIC_YELLOW;
     c.lineWidth = 2;
-    c.shadowBlur = 12;
-    c.shadowColor = COLORS.ELECTRIC_YELLOW;
     c.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = i * Math.PI / 3;
-      const px = cx2 + Math.cos(a) * (tower.size / 2);
-      const py = cy2 + Math.sin(a) * (tower.size / 2);
+    const or = s / 2 + 1;
+    const octNodes = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) - Math.PI / 8;
+      const px = cx2 + Math.cos(a) * or;
+      const py = cy2 + Math.sin(a) * or;
+      octNodes.push({ x: px, y: py });
       if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
     }
     c.closePath();
     c.fill();
     c.stroke();
     c.restore();
-  } else if (tier === 3) {
-    // Square + circular ring
-    c.fillRect(bx, by, tower.size, tower.size);
-    c.save();
-    const ringA = 0.4 + 0.3 * Math.sin(t * 4);
-    c.globalAlpha = ringA;
-    c.strokeStyle = COLORS.ELECTRIC_YELLOW;
-    c.lineWidth = 1.5;
-    c.beginPath();
-    c.arc(cx2, cy2, tower.size / 2 + 4, 0, Math.PI * 2);
-    c.stroke();
-    c.restore();
-  } else {
-    c.fillRect(bx, by, tower.size, tower.size);
-  }
 
-  // Tier 2+: pylon crystals
-  if (tier >= 2) {
-    pylonAngles.forEach(a => {
-      const px = cx2 + Math.cos(a) * pylonRadius;
-      const py = cy2 + Math.sin(a) * pylonRadius;
-      const crystalSize = tier >= 4 ? 5 : 3;
-      c.save();
-      c.fillStyle = COLORS.ELECTRIC_YELLOW;
-      c.shadowBlur = tier >= 4 ? 12 : 5;
-      c.shadowColor = COLORS.ELECTRIC_YELLOW;
-      c.beginPath();
-      c.moveTo(px, py - crystalSize);
-      c.lineTo(px + crystalSize / 2, py);
-      c.lineTo(px, py + crystalSize / 2);
-      c.lineTo(px - crystalSize / 2, py);
-      c.closePath();
-      c.fill();
-      c.restore();
-    });
-  }
-
-  // Tier 3: floating orb in center
-  if (tier >= 3) {
-    const orbPulse = 3 + 2 * Math.sin(t * 4);
+    // Continuous circulating Chain Lightning web between all 8 nodes
     c.save();
-    c.shadowBlur = 12;
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 1.3;
+    c.shadowBlur = 10;
     c.shadowColor = COLORS.ELECTRIC_YELLOW;
-    c.fillStyle = '#ffee88';
+    for (let i = 0; i < 8; i++) {
+      const nextIdx = (i + 1) % 8;
+      const p1 = octNodes[i];
+      const p2 = octNodes[nextIdx];
+      const midJitterX = (p1.x + p2.x) / 2 + Math.sin(t * 20 + i) * 3;
+      const midJitterY = (p1.y + p2.y) / 2 + Math.cos(t * 20 + i) * 3;
+      c.beginPath();
+      c.moveTo(p1.x, p1.y);
+      c.lineTo(midJitterX, midJitterY);
+      c.lineTo(p2.x, p2.y);
+      c.stroke();
+
+      // Node conductor crystal
+      c.fillStyle = COLORS.ELECTRIC_YELLOW;
+      c.fillRect(p1.x - 2, p1.y - 2, 4, 4);
+    }
+    c.restore();
+
+    // Central Quantum Emitter Singularity
+    const singPulse = 0.8 + 0.2 * Math.sin(t * 10);
+    c.save();
+    c.shadowBlur = 24;
+    c.shadowColor = '#ffffff';
+    c.fillStyle = '#ffffff';
     c.beginPath();
-    c.arc(cx2, cy2, orbPulse, 0, Math.PI * 2);
+    c.arc(cx2, cy2, 6 * singPulse, 0, Math.PI * 2);
     c.fill();
     c.restore();
+
+  } else if (tier === 3) {
+    // =========================================================
+    // TIER 3: Menara Tesla Bintang-6 (Star-Node Tower) & Piringan Magnetik
+    // =========================================================
+    // Rotating magnetic levitation disc
+    const discRot = t * 2.5;
+    c.save();
+    c.strokeStyle = COLORS.ELECTRIC_YELLOW;
+    c.lineWidth = 1.5;
+    c.shadowBlur = 8;
+    c.shadowColor = COLORS.ELECTRIC_YELLOW;
+    c.beginPath();
+    c.ellipse(cx2, cy2, s * 0.45, s * 0.22, discRot, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+
+    // 6-Pointed Star Nodes Chassis
+    c.save();
+    c.fillStyle = '#161203';
+    c.strokeStyle = '#FFAA00';
+    c.lineWidth = 1.8;
+    const starNodes = [];
+    c.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI / 3);
+      const outerX = cx2 + Math.cos(a) * (s * 0.44);
+      const outerY = cy2 + Math.sin(a) * (s * 0.44);
+      starNodes.push({ x: outerX, y: outerY });
+      const innerA = a + Math.PI / 6;
+      const innerX = cx2 + Math.cos(innerA) * (s * 0.22);
+      const innerY = cy2 + Math.sin(innerA) * (s * 0.22);
+      if (i === 0) c.moveTo(outerX, outerY); else c.lineTo(outerX, outerY);
+      c.lineTo(innerX, innerY);
+    }
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Lightning arcs jumping between opposing star nodes
+    c.strokeStyle = '#FFEE77';
+    c.lineWidth = 1.2;
+    c.shadowBlur = 6;
+    c.shadowColor = '#FFEE77';
+    for (let i = 0; i < 3; i++) {
+      const n1 = starNodes[i];
+      const n2 = starNodes[i + 3];
+      const jx = (n1.x + n2.x) / 2 + Math.sin(t * 16 + i) * 4;
+      const jy = (n1.y + n2.y) / 2 + Math.cos(t * 16 + i) * 4;
+      c.beginPath();
+      c.moveTo(n1.x, n1.y);
+      c.lineTo(jx, jy);
+      c.lineTo(n2.x, n2.y);
+      c.stroke();
+    }
+    c.restore();
+
+  } else if (tier === 2) {
+    // =========================================================
+    // TIER 2: Rod Tesla bertingkat dengan bola konduktor melayang di puncaknya
+    // =========================================================
+    c.save();
+    c.fillStyle = '#141005';
+    c.strokeStyle = '#FFD700';
+    c.lineWidth = 1.4;
+    c.fillRect(bx + 4, by + 4, s - 8, s - 8);
+    c.strokeRect(bx + 4, by + 4, s - 8, s - 8);
+
+    // Stepped Tesla Toroid Rings (3 stacked discs)
+    for (let r = 0; r < 3; r++) {
+      const ty = cy2 + 5 - r * 5;
+      const tw = (s * 0.35) - r * 2.5;
+      c.fillStyle = r % 2 === 0 ? '#FFAA00' : '#FFD700';
+      c.strokeStyle = '#ffffff88';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.ellipse(cx2, ty, tw, 2.5, 0, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    }
+
+    // Levitating conductor sphere at the apex (floating with Math.sin)
+    const bobY = Math.sin(t * 6) * 3;
+    const orbY = cy2 - 9 + bobY;
+    c.fillStyle = '#ffffff';
+    c.shadowBlur = 14;
+    c.shadowColor = COLORS.ELECTRIC_YELLOW;
+    c.beginPath();
+    c.arc(cx2, orbY, 4, 0, Math.PI * 2);
+    c.fill();
+
+    // Tesla spark discharge to the base
+    if (Math.sin(t * 12) > 0.3) {
+      c.strokeStyle = '#FFEE66';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(cx2, orbY);
+      c.lineTo(cx2 + Math.sin(t * 20) * 8, cy2);
+      c.stroke();
+    }
+    c.restore();
+
+  } else {
+    // =========================================================
+    // TIER 1: Pemancar Prisma Segitiga bercabang listrik
+    // =========================================================
+    c.save();
+    c.fillStyle = '#120f04';
+    c.strokeStyle = COLORS.ELECTRIC_YELLOW;
+    c.lineWidth = 1.5;
+
+    // Triangular Prism Base
+    c.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2 / 3) - Math.PI / 2;
+      const px = cx2 + Math.cos(a) * (s * 0.42);
+      const py = cy2 + Math.sin(a) * (s * 0.42);
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Electrical branches radiating from vertices
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 1;
+    c.shadowBlur = 6;
+    c.shadowColor = COLORS.ELECTRIC_YELLOW;
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2 / 3) - Math.PI / 2;
+      const vx = cx2 + Math.cos(a) * (s * 0.42);
+      const vy = cy2 + Math.sin(a) * (s * 0.42);
+      const sparkLen = 4 + Math.sin(t * 15 + i) * 3;
+      c.beginPath();
+      c.moveTo(vx, vy);
+      c.lineTo(vx + Math.cos(a) * sparkLen, vy + Math.sin(a) * sparkLen);
+      c.stroke();
+    }
+    c.restore();
   }
 
-  // Barrel / emitter needle
+  // Directional Emitter Needle / Cathode Probe
   c.save();
   c.translate(cx2, cy2);
   c.rotate(angle);
   c.strokeStyle = COLORS.ELECTRIC_YELLOW;
-  c.lineWidth = 2;
-  if (tier <= 1) {
-    // Single needle
-    c.beginPath();
-    c.moveTo(0, -tower.size / 2);
-    c.lineTo(0, -tower.size / 2 - 12);
-    c.stroke();
-    c.fillStyle = COLORS.ELECTRIC_YELLOW;
-    c.beginPath();
-    c.arc(0, -tower.size / 2 - 13, 2, 0, Math.PI * 2);
-    c.fill();
-  } else if (tier >= 2) {
-    // Suppressed needle (pylons handle the visual; keep a short stub)
-    c.globalAlpha = 0.4;
-    c.beginPath();
-    c.moveTo(0, -tower.size / 2);
-    c.lineTo(0, -tower.size / 2 - 7);
-    c.stroke();
-    c.globalAlpha = 1;
-  }
+  c.lineWidth = tier >= 3 ? 2.5 : 1.8;
+  c.shadowBlur = 8;
+  c.shadowColor = COLORS.ELECTRIC_YELLOW;
+  c.beginPath();
+  c.moveTo(0, -4);
+  c.lineTo(0, -s * 0.45);
+  c.stroke();
+
+  // Cathode emitter tip
+  c.fillStyle = '#ffffff';
+  c.beginPath();
+  c.arc(0, -s * 0.46, tier >= 3 ? 3 : 2, 0, Math.PI * 2);
+  c.fill();
+
+  c.restore();
   c.restore();
 }
 
@@ -2175,85 +3211,480 @@ function drawEnemies(gameState) {
   });
 }
 
+// =============================================================
+// === ENEMY PROCEDURAL VISUAL RENDERERS (Organic / Cyberpunk) ===
+// =============================================================
+
+// ── 1. Syntax Slime ──────────────────────────────────────────
+function _drawSyntaxSlime(c, enemy, cx, cy, vSize, t) {
+  const r = vSize / 2;
+  // Harmonic organic blob perimeter
+  c.save();
+  c.shadowBlur = 10;
+  c.shadowColor = COLORS.DIGITAL_GREEN;
+  c.fillStyle = 'rgba(10, 40, 15, 0.85)';
+  c.strokeStyle = COLORS.DIGITAL_GREEN;
+  c.lineWidth = 1.6;
+
+  c.beginPath();
+  const segments = 16;
+  for (let i = 0; i <= segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    // Harmonic wave wobbling
+    const wobble = 1 + 0.14 * Math.sin(a * 4 + t * 5) + 0.08 * Math.cos(a * 2 - t * 3);
+    const px = cx + Math.cos(a) * (r * wobble);
+    const py = cy + Math.sin(a) * (r * wobble * 0.9); // slight vertical squash
+    if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+  }
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.restore();
+
+  // Floating syntax bracket token inside cytoplasm { }
+  c.save();
+  c.fillStyle = '#b3ff99';
+  c.font = 'bold 9px monospace';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  const tokenBob = Math.sin(t * 4) * 1.5;
+  c.fillText('{ }', cx, cy + tokenBob);
+  c.restore();
+
+  // Cyber slit eyes
+  c.fillStyle = '#ffffff';
+  c.shadowBlur = 4;
+  c.shadowColor = '#ffffff';
+  const eyeBlink = Math.sin(t * 3) > 0.95 ? 0.5 : 2;
+  c.fillRect(cx - 4, cy - 3, 2.5, eyeBlink);
+  c.fillRect(cx + 1.5, cy - 3, 2.5, eyeBlink);
+
+  // Tiny trailing slime droplets
+  for (let i = 0; i < 3; i++) {
+    const da = t * 2 + i * 2.1;
+    const dr = r * 0.8 + (i * 2);
+    const dx = cx + Math.cos(da) * dr;
+    const dy = cy + Math.sin(da) * dr;
+    c.fillStyle = COLORS.DIGITAL_GREEN;
+    c.beginPath();
+    c.arc(dx, dy, 1.2, 0, Math.PI * 2);
+    c.fill();
+  }
+}
+
+// ── 2. Null Pointer Wraith ───────────────────────────────────
+function _drawNullPointerWraith(c, enemy, cx, cy, vSize, t) {
+  const r = vSize / 2;
+  const isNull = enemy.isInvisible;
+
+  c.save();
+  // Ghostly floating bob
+  const bobY = Math.sin(t * 4) * 2.5;
+  const gy = cy + bobY;
+
+  c.shadowBlur = isNull ? 16 : 10;
+  c.shadowColor = isNull ? '#ffffff' : COLORS.NEON_CYAN;
+
+  // Ethereal cowl / hooded shroud
+  c.fillStyle = isNull ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 30, 45, 0.85)';
+  c.strokeStyle = isNull ? '#ffffff' : COLORS.GHOST_WHITE;
+  c.lineWidth = 1.4;
+
+  c.beginPath();
+  // Top arched hood
+  c.arc(cx, gy - 2, r * 0.75, Math.PI, 0);
+  // Trailing ethereal vapor wisps at bottom
+  const wisp1 = Math.sin(t * 6) * 3;
+  const wisp2 = Math.cos(t * 5) * 3;
+  const wisp3 = Math.sin(t * 7 + 1) * 3;
+  c.lineTo(cx + r * 0.75, gy + r * 0.8 + wisp1);
+  c.quadraticCurveTo(cx + r * 0.35, gy + r * 0.4, cx, gy + r * 0.9 + wisp2);
+  c.quadraticCurveTo(cx - r * 0.35, gy + r * 0.4, cx - r * 0.75, gy + r * 0.8 + wisp3);
+  c.closePath();
+  c.fill();
+  c.stroke();
+
+  // Hollow void mask with glowing cyan slit eyes
+  c.fillStyle = '#050a10';
+  c.beginPath();
+  c.ellipse(cx, gy - 1, r * 0.45, r * 0.35, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // Piercing glowing eyes
+  c.fillStyle = isNull ? '#ffffff' : COLORS.NEON_CYAN;
+  c.shadowBlur = 6;
+  c.shadowColor = COLORS.NEON_CYAN;
+  c.fillRect(cx - 3.5, gy - 2, 2, 1.5);
+  c.fillRect(cx + 1.5, gy - 2, 2, 1.5);
+
+  // Floating memory pointer glyph "0x0"
+  c.fillStyle = COLORS.NEON_CYAN;
+  c.font = '6px monospace';
+  c.textAlign = 'center';
+  c.fillText('0x0', cx, gy + r * 0.35);
+
+  c.restore();
+}
+
+// ── 3. Memory Leak Ooze ───────────────────────────────────────
+function _drawMemoryLeakOoze(c, enemy, cx, cy, vSize, t) {
+  const r = vSize / 2;
+
+  c.save();
+  c.shadowBlur = 12;
+  c.shadowColor = COLORS.RUST_ORANGE;
+
+  // Expanding/contracting toxic sludge body
+  const pulse = 1 + 0.08 * Math.sin(t * 3);
+  c.fillStyle = 'rgba(40, 15, 5, 0.9)';
+  c.strokeStyle = COLORS.RUST_ORANGE;
+  c.lineWidth = 1.6;
+
+  c.beginPath();
+  const pustuleCount = 6;
+  for (let i = 0; i <= pustuleCount; i++) {
+    const a = (i / pustuleCount) * Math.PI * 2;
+    // Pustules swelling and bubbling
+    const bubble = 1 + 0.18 * Math.sin(t * 4 + i * 1.5);
+    const px = cx + Math.cos(a) * (r * pulse * bubble);
+    const py = cy + Math.sin(a) * (r * pulse * bubble);
+    if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+  }
+  c.closePath();
+  c.fill();
+  c.stroke();
+
+  // Molten bubbling blisters on surface
+  for (let b = 0; b < 3; b++) {
+    const ba = (t * 1.5 + b * 2) % (Math.PI * 2);
+    const br = r * 0.45;
+    const bx = cx + Math.cos(ba) * br;
+    const by = cy + Math.sin(ba) * br;
+    const bRad = 1.5 + 1.2 * Math.abs(Math.sin(t * 5 + b));
+    c.fillStyle = '#ffaa00';
+    c.beginPath();
+    c.arc(bx, by, bRad, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  // Leaking binary memory bits (0, 1) dripping downward
+  c.fillStyle = '#ff6b00';
+  c.font = 'bold 7px monospace';
+  c.textAlign = 'center';
+  const dripY = (t * 14) % 12;
+  const bitChar = Math.floor(t * 2) % 2 === 0 ? '1' : '0';
+  c.fillText(bitChar, cx, cy + r * 0.6 + dripY);
+
+  // Toxic glare eyes
+  c.fillStyle = '#ffff00';
+  c.fillRect(cx - 4, cy - 2, 2.5, 2.5);
+  c.fillRect(cx + 1.5, cy - 2, 2.5, 2.5);
+
+  c.restore();
+}
+
+// ── 4. Race Condition Twins ──────────────────────────────────
+function _drawRaceConditionTwin(c, enemy, cx, cy, vSize, t) {
+  const isRed = enemy.twinColor === 'red';
+  const primaryColor = isRed ? COLORS.RED_TWIN : COLORS.BLUE_TWIN;
+  const compColor = isRed ? COLORS.BLUE_TWIN : COLORS.RED_TWIN;
+
+  c.save();
+  c.shadowBlur = 10;
+  c.shadowColor = primaryColor;
+
+  // Primary Quantum Core (diamond node)
+  const coreRadius = vSize * 0.35;
+  c.fillStyle = isRed ? '#2b0810' : '#081e2b';
+  c.strokeStyle = primaryColor;
+  c.lineWidth = 1.8;
+  c.beginPath();
+  c.moveTo(cx, cy - coreRadius);
+  c.lineTo(cx + coreRadius, cy);
+  c.lineTo(cx, cy + coreRadius);
+  c.lineTo(cx - coreRadius, cy);
+  c.closePath();
+  c.fill();
+  c.stroke();
+
+  // Orbiting Secondary Polarity Node
+  const orbitSpeed = t * 4.5;
+  const orbitDist = vSize * 0.65;
+  const ox = cx + Math.cos(orbitSpeed) * orbitDist;
+  const oy = cy + Math.sin(orbitSpeed) * orbitDist;
+
+  // Quantum Entangled Lightning Arc between the two
+  c.strokeStyle = '#ffffff';
+  c.lineWidth = 1.2;
+  const midJitterX = (cx + ox) / 2 + Math.sin(t * 22) * 3;
+  const midJitterY = (cy + oy) / 2 + Math.cos(t * 22) * 3;
+  c.beginPath();
+  c.moveTo(cx, cy);
+  c.lineTo(midJitterX, midJitterY);
+  c.lineTo(ox, oy);
+  c.stroke();
+
+  // Secondary orbital node
+  c.fillStyle = compColor;
+  c.beginPath();
+  c.arc(ox, oy, 3, 0, Math.PI * 2);
+  c.fill();
+
+  // Inner Core Glyph
+  c.fillStyle = '#ffffff';
+  c.beginPath();
+  c.arc(cx, cy, 2, 0, Math.PI * 2);
+  c.fill();
+
+  c.restore();
+}
+
+// ── 5. Deadlock Golem ────────────────────────────────────────
+function _drawDeadlockGolem(c, enemy, cx, cy, vSize, t) {
+  const s = vSize;
+  const isLocked = enemy.isDeadlocked;
+
+  c.save();
+
+  // ── Locked Aura & Energy Chains ──
+  if (isLocked) {
+    c.shadowBlur = 16;
+    c.shadowColor = COLORS.ELECTRIC_YELLOW;
+    c.strokeStyle = COLORS.ELECTRIC_YELLOW;
+    c.lineWidth = 2;
+    // Crackling octagonal energy barrier
+    c.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) + t * 2;
+      const px = cx + Math.cos(a) * (s * 0.62);
+      const py = cy + Math.sin(a) * (s * 0.62);
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+    c.stroke();
+  }
+
+  // Heavy Tectonic Plated Chassis
+  c.fillStyle = isLocked ? '#2d2508' : '#1e242b';
+  c.strokeStyle = isLocked ? COLORS.ELECTRIC_YELLOW : '#4a5568';
+  c.lineWidth = 2;
+
+  // Segmented Torso / Shoulder Pauldrons
+  c.fillRect(cx - s * 0.45, cy - s * 0.45, s * 0.9, s * 0.9);
+  c.strokeRect(cx - s * 0.45, cy - s * 0.45, s * 0.9, s * 0.9);
+
+  // Armored Corner Brackets
+  c.fillStyle = '#11151a';
+  c.fillRect(cx - s * 0.48, cy - s * 0.48, 5, 5);
+  c.fillRect(cx + s * 0.48 - 5, cy - s * 0.48, 5, 5);
+  c.fillRect(cx - s * 0.48, cy + s * 0.48 - 5, 5, 5);
+  c.fillRect(cx + s * 0.48 - 5, cy + s * 0.48 - 5, 5, 5);
+
+  // Glowing Cyclopean Visor Optic
+  c.fillStyle = isLocked ? '#ffff00' : COLORS.NEON_RED;
+  c.shadowBlur = 8;
+  c.shadowColor = isLocked ? '#ffff00' : COLORS.NEON_RED;
+  c.fillRect(cx - s * 0.28, cy - 3, s * 0.56, 4);
+
+  // Locking Padlock / Deadlock Rune over chest
+  if (isLocked) {
+    c.fillStyle = COLORS.ELECTRIC_YELLOW;
+    c.font = 'bold 11px monospace';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('🔒', cx, cy + 5);
+  } else {
+    // Thermal core vents
+    c.fillStyle = '#ff4400';
+    c.fillRect(cx - 3, cy + 3, 6, 2);
+  }
+
+  c.restore();
+}
+
+// ── 6. 404 Ghost ─────────────────────────────────────────────
+function _drawGhost404(c, enemy, cx, cy, vSize, t) {
+  const r = vSize / 2;
+
+  c.save();
+  // Floating Dimensional Glitch Jitter
+  const jitterX = Math.sin(t * 30) > 0.8 ? (Math.random() - 0.5) * 4 : 0;
+  const bobY = Math.sin(t * 5) * 3;
+  const gx = cx + jitterX;
+  const gy = cy + bobY;
+
+  // Chromatic aberration split (Cyan & Magenta shadow ghosts)
+  c.save();
+  c.globalAlpha = 0.35;
+  c.fillStyle = '#00ffff';
+  c.beginPath();
+  c.arc(gx - 2, gy, r * 0.65, Math.PI, 0);
+  c.lineTo(gx + r * 0.65 - 2, gy + r * 0.8);
+  c.lineTo(gx - r * 0.65 - 2, gy + r * 0.8);
+  c.closePath();
+  c.fill();
+
+  c.fillStyle = '#ff00ff';
+  c.beginPath();
+  c.arc(gx + 2, gy, r * 0.65, Math.PI, 0);
+  c.lineTo(gx + r * 0.65 + 2, gy + r * 0.8);
+  c.lineTo(gx - r * 0.65 + 2, gy + r * 0.8);
+  c.closePath();
+  c.fill();
+  c.restore();
+
+  // Primary Phantom Shroud
+  c.shadowBlur = 12;
+  c.shadowColor = COLORS.GHOST_PURPLE;
+  c.fillStyle = 'rgba(25, 10, 40, 0.85)';
+  c.strokeStyle = '#c77dff';
+  c.lineWidth = 1.5;
+
+  c.beginPath();
+  c.arc(gx, gy - 2, r * 0.75, Math.PI, 0);
+  // Jagged digital skirt
+  const skirtW = r * 0.75;
+  c.lineTo(gx + skirtW, gy + r * 0.75);
+  c.lineTo(gx + skirtW * 0.5, gy + r * 0.4);
+  c.lineTo(gx, gy + r * 0.75);
+  c.lineTo(gx - skirtW * 0.5, gy + r * 0.4);
+  c.lineTo(gx - skirtW, gy + r * 0.75);
+  c.closePath();
+  c.fill();
+  c.stroke();
+
+  // Holographic "[404]" billboard above head
+  c.fillStyle = '#ffffff';
+  c.shadowBlur = 6;
+  c.shadowColor = '#ff00ff';
+  c.font = 'bold 8px monospace';
+  c.textAlign = 'center';
+  c.textBaseline = 'bottom';
+  c.fillText('[404]', gx, gy - r * 0.75 - 1);
+
+  // Digital eyes
+  c.fillStyle = '#00ffff';
+  c.fillRect(gx - 3.5, gy - 3, 2, 2);
+  c.fillRect(gx + 1.5, gy - 3, 2, 2);
+
+  c.restore();
+}
+
+// ── 7. Stack Overflow Titan (Boss) ───────────────────────────
+function _drawStackOverflowTitan(c, enemy, cx, cy, vSize, t) {
+  const s = vSize;
+  const phaseColors = [COLORS.DIGITAL_GREEN, COLORS.RUST_ORANGE, COLORS.NEON_RED];
+  const activeColor = phaseColors[enemy.currentPhase] || COLORS.NEON_RED;
+
+  c.save();
+
+  // Concentric rotating firewall rings
+  c.save();
+  c.strokeStyle = activeColor;
+  c.lineWidth = 1.8;
+  c.shadowBlur = 18;
+  c.shadowColor = activeColor;
+  c.setLineDash([8, 6]);
+  c.beginPath();
+  c.arc(cx, cy, s * 0.65, t * 1.5, t * 1.5 + Math.PI * 2);
+  c.stroke();
+  c.setLineDash([]);
+  c.restore();
+
+  // Multi-tier Stack Memory Blocks (3 vertical segments)
+  c.fillStyle = '#140508';
+  c.strokeStyle = activeColor;
+  c.lineWidth = 2;
+  c.shadowBlur = 12;
+  c.shadowColor = activeColor;
+
+  for (let tierIdx = -1; tierIdx <= 1; tierIdx++) {
+    const tw = s * (0.85 - Math.abs(tierIdx) * 0.15);
+    const th = s * 0.24;
+    const ty = cy + tierIdx * (s * 0.28) - th / 2;
+    c.fillRect(cx - tw / 2, ty, tw, th);
+    c.strokeRect(cx - tw / 2, ty, tw, th);
+
+    // Memory address labels on blocks
+    c.fillStyle = '#ffffff88';
+    c.font = '5px monospace';
+    c.textAlign = 'left';
+    c.fillText(`0x${(tierIdx + 2) * 4}F`, cx - tw / 2 + 2, ty + th - 2);
+  }
+
+  // Central pulsating red eye core (Corrupt Supercomputer Eye)
+  const eyeGlow = 0.8 + 0.2 * Math.sin(t * 8);
+  c.fillStyle = '#ffffff';
+  c.shadowBlur = 20;
+  c.shadowColor = COLORS.NEON_RED;
+  c.beginPath();
+  c.arc(cx, cy, 6 * eyeGlow, 0, Math.PI * 2);
+  c.fill();
+
+  c.fillStyle = activeColor;
+  c.beginPath();
+  c.arc(cx, cy, 3, 0, Math.PI * 2);
+  c.fill();
+
+  // Boss title & Phase
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 7px monospace';
+  c.textAlign = 'center';
+  c.shadowBlur = 6;
+  c.shadowColor = activeColor;
+  c.fillText('TITAN', cx, cy - s * 0.58);
+
+  c.restore();
+}
+
 /**
  * drawSprite(entity) untuk enemy.
- * Placeholder: circle/rect berwarna sesuai GDD 7b.
- * TODO: ganti ctx.drawImage untuk sprite asli.
+ * Now fully rendered with organic and cyberpunk Canvas 2D procedures!
  */
 function drawSingleEnemy(enemy) {
   const vSize = enemy.visualSize;
   const cx = enemy.x;
   const cy = enemy.y;
+  const t = Date.now() / 1000;
 
   ctx.save();
   ctx.globalAlpha = enemy.opacity;
 
-  // Body berdasarkan bentuk (circle untuk basic, rect untuk golem)
-  if (enemy.defId === 'deadlock_golem') {
-    // Kotak chunky untuk Golem
-    ctx.fillStyle = enemy.isDeadlocked ? COLORS.ELECTRIC_YELLOW : enemy.baseColor;
-    ctx.fillRect(cx - vSize / 2, cy - vSize / 2, vSize, vSize);
-    // Mata merah
-    ctx.fillStyle = COLORS.NEON_RED;
-    ctx.fillRect(cx - vSize / 4, cy - vSize / 4, 5, 5);
-    ctx.fillRect(cx + vSize / 8, cy - vSize / 4, 5, 5);
-  } else if (enemy.type === 'boss') {
-    // Boss: rect besar dengan outline berkedip
-    const t = Date.now() / 1000;
-    const blink = Math.sin(t * 4) > 0;
-    ctx.fillStyle = enemy.baseColor;
-    ctx.fillRect(cx - vSize / 2, cy - vSize / 2, vSize, vSize);
-    ctx.strokeStyle = blink ? COLORS.NEON_RED : COLORS.ELECTRIC_YELLOW;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(cx - vSize / 2, cy - vSize / 2, vSize, vSize);
-    // Teks nama boss
-    ctx.fillStyle = COLORS.GHOST_WHITE;
-    ctx.font = '7px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('BOSS', cx, cy - vSize / 2 - 4);
-
-    // Phase indicator
-    ctx.fillStyle = [COLORS.DIGITAL_GREEN, COLORS.RUST_ORANGE, COLORS.NEON_RED][enemy.currentPhase];
-    ctx.font = '6px monospace';
-    ctx.fillText(`PH.${enemy.currentPhase + 1}`, cx, cy + vSize / 2 + 10);
+  // Dispatch to dedicated procedural renderer based on defId / type
+  if (enemy.type === 'boss' || enemy.defId === 'stack_overflow_titan') {
+    _drawStackOverflowTitan(ctx, enemy, cx, cy, vSize, t);
+  } else if (enemy.defId === 'syntax_slime') {
+    _drawSyntaxSlime(ctx, enemy, cx, cy, vSize, t);
+  } else if (enemy.defId === 'null_pointer_wraith') {
+    _drawNullPointerWraith(ctx, enemy, cx, cy, vSize, t);
+  } else if (enemy.defId === 'memory_leak_ooze') {
+    _drawMemoryLeakOoze(ctx, enemy, cx, cy, vSize, t);
+  } else if (enemy.defId === 'race_condition_twin') {
+    _drawRaceConditionTwin(ctx, enemy, cx, cy, vSize, t);
+  } else if (enemy.defId === 'deadlock_golem') {
+    _drawDeadlockGolem(ctx, enemy, cx, cy, vSize, t);
+  } else if (enemy.defId === 'ghost_404') {
+    _drawGhost404(ctx, enemy, cx, cy, vSize, t);
   } else {
-    // Musuh biasa: circle
+    // Graceful fallback for any custom enemy
     ctx.beginPath();
     ctx.arc(cx, cy, vSize / 2, 0, Math.PI * 2);
     ctx.fillStyle = enemy.baseColor;
     ctx.fill();
-
-    // Mata pixel: dua kotak kecil
-    ctx.fillStyle = '#ff0000';
-    ctx.fillRect(cx - 4, cy - 3, 3, 3);
-    ctx.fillRect(cx + 1, cy - 3, 3, 3);
-
-    // Twins: outline warna berbeda
-    if (enemy.twinColor === 'red') {
-      ctx.strokeStyle = COLORS.RED_TWIN;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    // 404 Ghost: "?" di kepala
-    if (enemy.defId === 'ghost_404') {
-      ctx.fillStyle = COLORS.GHOST_WHITE;
-      ctx.font = 'bold 10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('?', cx, cy + 4);
-    }
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   // Flash saat kena hit
   if (enemy.flashTimer > 0) {
-    ctx.fillStyle = '#ffffff88';
-    if (enemy.defId === 'deadlock_golem') {
-      ctx.fillRect(cx - vSize / 2, cy - vSize / 2, vSize, vSize);
-    } else {
-      ctx.beginPath();
-      ctx.arc(cx, cy, vSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = '#ffffffbb';
+    ctx.beginPath();
+    ctx.arc(cx, cy, vSize * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   ctx.restore();
