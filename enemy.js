@@ -102,9 +102,19 @@ class Enemy {
     // 404 Ghost
     this.blinkTimer = 0;
 
-    // Boss phases
+    // Boss mechanics (5 Sector Bosses)
     this.currentPhase = 0;
     this.bossSpawnTimer = 0;
+    this.livesRemaining = (this.defId === 'fatal_exception_overlord') ? 2 : 1;
+    this.isBerserk = false;
+    this.kernelFreezeTimer = 0;
+    this.kernelDroppedMicro = false;
+    this.bsodWaveTimer = 0;
+    this.logicBombTimer = 12.0;
+    this.logicBombHpThreshold = this.maxHp * 0.25;
+    this.logicBombHpStart = this.hp;
+    this.dataCorruptorTimer = 0;
+    this.corruptorOrbTimer = 0;
 
     // Visual
     this.flashTimer = 0; // flash merah saat kena hit
@@ -156,6 +166,20 @@ class Enemy {
         this.flashTimer = 0.1;
         return finalDmg;
       }
+    }
+
+    // Fatal Exception Overlord: 2 Lives Resurrection Mechanic
+    if (this.hp - finalDmg <= 0 && this.defId === 'fatal_exception_overlord' && this.livesRemaining > 1) {
+      this.livesRemaining--;
+      this.hp = Math.round(this.maxHp * 0.60);
+      this.speed *= 1.40;
+      this.armor = 0;
+      this.isBerserk = true;
+      this.flashTimer = 0.5;
+      if (typeof spawnDamageNumber === 'function') {
+        spawnDamageNumber(this.x, this.y - 20, 'RESURRECT: BERSERK!', '#FF0033');
+      }
+      return finalDmg;
     }
 
     this.hp -= finalDmg;
@@ -244,6 +268,11 @@ class Enemy {
     // Boss: juga grant Crypto Shard
     if (this.bountyShards > 0) {
       addCryptoShards(this.bountyShards);
+    }
+
+    // Fatal Exception Overlord: splits into 2 Sub-Exceptions upon final defeat
+    if (this.defId === 'fatal_exception_overlord') {
+      spawnEnemiesAtPosition('null_pointer_wraith', 2, this.x, this.y);
     }
 
     // Race Condition Twins: catat waktu kematian di diri sendiri
@@ -412,8 +441,165 @@ class Enemy {
     }
   }
 
-  /** Update boss phase berdasarkan HP threshold (GDD section 5 boss) */
+  /** Update boss phase dan special mechanics (5 Sector Bosses + legacy) */
   _updateBossPhase(dt) {
+    // 1. KERNEL PANIC COLOSSUS
+    if (this.defId === 'kernel_panic_colossus') {
+      this.kernelFreezeTimer = (this.kernelFreezeTimer || 0) + dt;
+      if (this.kernelFreezeTimer >= 7.0) {
+        this.kernelFreezeTimer = 0;
+        const radiusPx = 2.5 * TILE_SIZE;
+        if (typeof towers !== 'undefined') {
+          towers.forEach(t => {
+            if (pixelDist(this.x, this.y, t.x, t.y) <= radiusPx) {
+              t.isFrozen = true;
+              t.frozenTimer = Math.max(t.frozenTimer || 0, 2.0);
+            }
+          });
+        }
+        if (typeof spawnGarbageCollectorPulse === 'function') {
+          spawnGarbageCollectorPulse(this.x, this.y, radiusPx);
+        }
+        if (typeof spawnDamageNumber === 'function') {
+          spawnDamageNumber(this.x, this.y - 20, 'KERNEL LOCK!', '#FF0033');
+        }
+      }
+
+      // Micro-corruption drop at <= 50% HP
+      if (!this.kernelDroppedMicro && (this.hp / this.maxHp <= 0.50)) {
+        this.kernelDroppedMicro = true;
+        spawnEnemiesAtPosition('syntax_slime', 3, this.x, this.y);
+        if (typeof spawnDamageNumber === 'function') {
+          spawnDamageNumber(this.x, this.y - 20, 'SPLIT: MICRO-BUGS!', '#39FF14');
+        }
+      }
+      return;
+    }
+
+    // 2. BLUE SCREEN OVERLORD
+    if (this.defId === 'blue_screen_overlord') {
+      this.bsodWaveTimer = (this.bsodWaveTimer || 0) + dt;
+      // Passive magnetic aura: slows towers within 3 tiles by 20%
+      const auraPx = 3.0 * TILE_SIZE;
+      if (typeof towers !== 'undefined') {
+        towers.forEach(t => {
+          if (pixelDist(this.x, this.y, t.x, t.y) <= auraPx) {
+            t.kingSpeedMult = Math.min(t.kingSpeedMult || 1.0, 0.80);
+          }
+        });
+      }
+      // Active shockwave: BSOD glitch disabling towers for 1.2s every 12s
+      if (this.bsodWaveTimer >= 12.0) {
+        this.bsodWaveTimer = 0;
+        if (typeof towers !== 'undefined') {
+          towers.forEach(t => {
+            if (pixelDist(this.x, this.y, t.x, t.y) <= 4.0 * TILE_SIZE) {
+              t.isFrozen = true;
+              t.frozenTimer = Math.max(t.frozenTimer || 0, 1.2);
+            }
+          });
+        }
+        if (typeof spawnGarbageCollectorPulse === 'function') {
+          spawnGarbageCollectorPulse(this.x, this.y, 4.0 * TILE_SIZE);
+        }
+        if (typeof spawnDamageNumber === 'function') {
+          spawnDamageNumber(this.x, this.y - 20, 'BSOD SHOCKWAVE!', '#1E90FF');
+        }
+      }
+      return;
+    }
+
+    // 3. LOGIC BOMB DEVASTATOR
+    if (this.defId === 'logic_bomb_devastator') {
+      this.logicBombTimer = (this.logicBombTimer || 12.0) - dt;
+      if (this.logicBombTimer <= 0) {
+        const hpLostInWindow = this.logicBombHpStart - this.hp;
+        if (hpLostInWindow < this.logicBombHpThreshold) {
+          // Detonate: 15 core damage!
+          if (typeof damageCore === 'function') {
+            damageCore(15);
+          }
+          if (typeof spawnDamageNumber === 'function') {
+            spawnDamageNumber(this.x, this.y - 25, 'CORE BOMB: -15 HP!', '#FF6A00');
+          }
+          if (typeof spawnGarbageCollectorPulse === 'function') {
+            spawnGarbageCollectorPulse(this.x, this.y, 3.5 * TILE_SIZE);
+          }
+        }
+        // Reset countdown window
+        this.logicBombTimer = 12.0;
+        this.logicBombHpStart = this.hp;
+      }
+      return;
+    }
+
+    // 4. DATA CORRUPTOR PRIME
+    if (this.defId === 'data_corruptor_prime') {
+      this.dataCorruptorTimer = (this.dataCorruptorTimer || 0) + dt;
+      this.corruptorOrbTimer = (this.corruptorOrbTimer || 0) + dt;
+
+      // Corrupt nearest non-miner tower every 10s
+      if (this.dataCorruptorTimer >= 10.0) {
+        this.dataCorruptorTimer = 0;
+        if (typeof towers !== 'undefined' && towers.length > 0) {
+          const eligible = towers.filter(t => !t.isMiner && !t.isCorrupted);
+          if (eligible.length > 0) {
+            const nearest = eligible.reduce((a, b) =>
+              pixelDist(this.x, this.y, a.x, a.y) < pixelDist(this.x, this.y, b.x, b.y) ? a : b
+            );
+            if (pixelDist(this.x, this.y, nearest.x, nearest.y) <= 4.5 * TILE_SIZE) {
+              nearest.isFrozen = true;
+              nearest.frozenTimer = 999;
+              nearest.isCorrupted = true;
+              if (typeof spawnDamageNumber === 'function') {
+                spawnDamageNumber(nearest.x, nearest.y - 10, 'CORRUPTED!', '#BA55D3');
+              }
+            }
+          }
+        }
+      }
+
+      // Shoot corruptive tracking projectile at nearest hero every 4s
+      if (this.corruptorOrbTimer >= 4.0) {
+        this.corruptorOrbTimer = 0;
+        if (typeof heroes !== 'undefined' && heroes.length > 0) {
+          const aliveHeroes = heroes.filter(h => !h.isDead);
+          if (aliveHeroes.length > 0) {
+            const targetHero = aliveHeroes.reduce((a, b) =>
+              pixelDist(this.x, this.y, a.x, a.y) < pixelDist(this.x, this.y, b.x, b.y) ? a : b
+            );
+            if (typeof addProjectile === 'function') {
+              addProjectile(this.x, this.y, targetHero.x, targetHero.y, '#BA55D3', 'void_orb');
+            }
+            targetHero.takeDamage(40);
+          }
+        }
+      }
+      return;
+    }
+
+    // 5. FATAL EXCEPTION OVERLORD
+    if (this.defId === 'fatal_exception_overlord') {
+      this.bossSpawnTimer = (this.bossSpawnTimer || 0) + dt;
+      if (this.bossSpawnTimer >= 4.0) {
+        this.bossSpawnTimer = 0;
+        // Tentacle glitch shock hitting within 2 tiles
+        const radiusPx = 2.0 * TILE_SIZE;
+        if (typeof heroes !== 'undefined') {
+          heroes.forEach(h => {
+            if (!h.isDead && pixelDist(this.x, this.y, h.x, h.y) <= radiusPx) {
+              h.takeDamage(35);
+            }
+          });
+        }
+        if (typeof spawnGarbageCollectorPulse === 'function') {
+          spawnGarbageCollectorPulse(this.x, this.y, radiusPx);
+        }
+      }
+      return;
+    }
+
+    // Legacy: Stack Overflow Titan
     if (this.defId !== 'stack_overflow_titan') return;
 
     const hpRatio = this.hp / this.maxHp;
@@ -443,7 +629,6 @@ class Enemy {
       this.bossSpawnTimer += dt;
       if (this.bossSpawnTimer >= def.spawnInterval) {
         this.bossSpawnTimer = 0;
-        // Spawn slimes di posisi boss
         spawnEnemiesAtPosition('syntax_slime', def.spawnCount, this.x, this.y);
       }
     }

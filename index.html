@@ -212,9 +212,17 @@
 
         <!-- SECTION: All Heroes Status Cards -->
         <div class="sidebar-section" id="sidebar-heroes">
-          <div class="sidebar-section-title">HERO STATUS</div>
-          <!-- Hero cards rendered here by buildSidebarHeroCards() -->
-          <div id="sidebar-hero-cards"></div>
+          <div class="sidebar-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>HERO STATUS</span>
+            <div class="hero-status-toggle">
+              <button id="hs-status-mode-deployed" class="hs-status-mode-btn active" onclick="setHeroStatusMode('deployed')" title="Tampilkan hero aktif">ACTIVE</button>
+              <button id="hs-status-mode-all" class="hs-status-mode-btn" onclick="setHeroStatusMode('all')" title="Tampilkan semua hero">ALL</button>
+            </div>
+          </div>
+          <!-- Hero cards rendered here by buildSidebarHeroCards() with scroll container -->
+          <div id="sidebar-hero-cards-wrap" class="sidebar-cards-scroll-wrap">
+            <div id="sidebar-hero-cards"></div>
+          </div>
         </div>
 
         <!-- SECTION: Tower Shop -->
@@ -245,10 +253,28 @@
           </div>
         </div>
 
-        <!-- SECTION: Hero Buy Panel (legacy anchor kept for compatibility) -->
+        <!-- SECTION: Hero Buy Panel / Hero Command Panel -->
         <div class="sidebar-section" id="sidebar-hero-buy">
-          <div class="sidebar-section-title">DEPLOY HERO</div>
-          <div id="hero-icons"></div>
+          <div class="sidebar-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>HERO COMMAND</span>
+            <button id="btn-open-hero-shop-modal" class="hero-shop-btn-mini" onclick="openHeroShopModal()" title="Buka Roster & Toko Hero Lengkap">[ROSTER]</button>
+          </div>
+          <div class="hero-shop-nav-bar">
+            <div class="hero-shop-filter-tabs">
+              <button class="hs-tab active" data-tab="all" onclick="setHeroShopTab('all')">ALL</button>
+              <button class="hs-tab" data-tab="starter" onclick="setHeroShopTab('starter')">TRIO</button>
+              <button class="hs-tab" data-tab="mech" onclick="setHeroShopTab('mech')">MECH</button>
+              <button class="hs-tab" data-tab="owned" onclick="setHeroShopTab('owned')">ACT</button>
+            </div>
+            <div class="hero-shop-pagination">
+              <button class="hs-page-btn" id="hs-page-prev" onclick="changeHeroShopPage(-1)" title="Halaman sebelumnya">&lt;</button>
+              <span id="hs-page-indicator">1/2</span>
+              <button class="hs-page-btn" id="hs-page-next" onclick="changeHeroShopPage(1)" title="Halaman berikutnya">&gt;</button>
+            </div>
+          </div>
+          <div id="hero-icons-wrap" class="hero-icons-scroll-wrap">
+            <div id="hero-icons"></div>
+          </div>
         </div>
 
       </aside>
@@ -305,6 +331,43 @@
       </div>
     </div>
 
+    <!-- =====================================================
+         MODAL: Full Hero Shop & Roster
+    ====================================================== -->
+    <div id="hero-shop-modal" class="hero-modal-backdrop" style="display:none;" onclick="if(event.target===this) closeHeroShopModal();">
+      <div class="hero-modal-box">
+        <div class="hero-modal-header">
+          <div class="hero-modal-title">
+            <span style="color:#00FFFF;">[ CYBERNETIC HERO ROSTER & COMMAND SHOP ]</span>
+            <div class="hero-modal-subtitle">DEPLOY UNIT TAMBAHAN UNTUK MEMPERKUAT PERTAHANAN PPKD CORE</div>
+          </div>
+          <div class="hero-modal-wallet">
+            <div class="hm-wallet-item">
+              <span style="color:#BF5AF2;">&#9670;</span> Shards: <strong id="hero-modal-shards-val" style="color:#BF5AF2;">0</strong>
+            </div>
+            <div class="hm-wallet-item">
+              <span style="color:#39FF14;">&#9632;</span> Bits: <strong id="hero-modal-bits-val" style="color:#39FF14;">0</strong>
+            </div>
+            <button class="hero-modal-close-btn" onclick="closeHeroShopModal()" title="Tutup Modal">[ X ]</button>
+          </div>
+        </div>
+
+        <div class="hero-modal-tabs-row">
+          <div class="hero-modal-tabs">
+            <button class="hero-modal-tab-btn active" data-tab="all" onclick="setHeroModalTab('all')">SEMUA UNIT (13)</button>
+            <button class="hero-modal-tab-btn" data-tab="starter" onclick="setHeroModalTab('starter')">STARTER TRIO (3)</button>
+            <button class="hero-modal-tab-btn" data-tab="mech" onclick="setHeroModalTab('mech')">CYBER-MECHS (10)</button>
+            <button class="hero-modal-tab-btn" data-tab="deployed" onclick="setHeroModalTab('deployed')">DEPLOYED (AKTIF)</button>
+          </div>
+          <div style="font-size:6px; color:#888;">Gunakan ESC atau tombol [ X ] untuk kembali ke game</div>
+        </div>
+
+        <div class="hero-modal-content-wrap">
+          <div id="hero-modal-grid" class="hero-modal-grid"></div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /screen-game -->
 
   <!-- =====================================================
@@ -327,6 +390,7 @@
   <script src="tower.js"></script>
   <script src="hero.js"></script>
   <script src="render.js"></script>
+  <script src="render_cyber_evolution.js"></script>
   <script src="ui.js"></script>
   <script src="waves.js"></script>
   <script src="game.js"></script>

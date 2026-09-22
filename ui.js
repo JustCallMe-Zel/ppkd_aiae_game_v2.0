@@ -490,24 +490,122 @@ function doSellTower() {
  *   - Queen:  800 bits -> 70 shard (ekonomi kuat, harga tertinggi; ironis
  *             karena dia sendiri yang menghasilkan shard -- dibeli lebih lambat)
  */
+/**
+ * Master Registry Hero Units:
+ * 1. Starter Trio (Default Units, King, Knight, Queen)
+ * 2. Cyber-Mech Reinforcements (Ronin, Valkyrie, Heavy Breaker, Cyber-Spider, etc.)
+ */
+const STARTER_HERO_IDS = ['king', 'knight', 'queen'];
+const CYBER_MECH_HERO_IDS = [
+  'ronin',
+  'valkyrie',
+  'heavy_breaker',
+  'cyber_spider',
+  'ninja_assassin',
+  'beam_cannoneer',
+  'engineer_bot',
+  'medic_mech',
+  'stealth_operative',
+  'aegis_guard',
+];
+const ALL_HERO_IDS = [...STARTER_HERO_IDS, ...CYBER_MECH_HERO_IDS];
+
+/**
+ * Harga beli hero non-starter & reinforcement unit:
+ * Starter default: King (50 Shards), Knight (40 Shards), Queen (70 Shards)
+ * Reinforcements:
+ * - Ronin (45 Shards)
+ * - Valkyrie (65 Shards)
+ * - Heavy Breaker (75 Shards)
+ * - Cyber-Spider (650 Data Bits)
+ * - Ninja Assassin (55 Shards)
+ * - Beam Cannoneer (800 Data Bits)
+ * - Engineer Bot (500 Data Bits)
+ * - Medic Mech (40 Shards)
+ * - Stealth Operative (60 Shards)
+ * - Aegis Guard (80 Shards)
+ */
 const HERO_BUY_PRICES = {
-  king:   50,
-  knight: 40,
-  queen:  70,
+  // Starter Trio (default starter units)
+  king:              { cost: 50,  currency: 'shard', label: '50 Shards' },
+  knight:            { cost: 40,  currency: 'shard', label: '40 Shards' },
+  queen:             { cost: 70,  currency: 'shard', label: '70 Shards' },
+
+  // Cyber-Mech Reinforcements (Distinct Shards / Bits prices)
+  ronin:             { cost: 45,  currency: 'shard', label: '45 Shards' },
+  valkyrie:          { cost: 65,  currency: 'shard', label: '65 Shards' },
+  heavy_breaker:     { cost: 75,  currency: 'shard', label: '75 Shards' },
+  cyber_spider:      { cost: 650, currency: 'bits',  label: '650 Bits' },
+  ninja_assassin:    { cost: 55,  currency: 'shard', label: '55 Shards' },
+  beam_cannoneer:    { cost: 800, currency: 'bits',  label: '800 Bits' },
+  engineer_bot:      { cost: 500, currency: 'bits',  label: '500 Bits' },
+  medic_mech:        { cost: 40,  currency: 'shard', label: '40 Shards' },
+  stealth_operative: { cost: 60,  currency: 'shard', label: '60 Shards' },
+  aegis_guard:       { cost: 80,  currency: 'shard', label: '80 Shards' },
 };
+
+function getHeroBuyPriceInfo(heroId) {
+  const p = HERO_BUY_PRICES[heroId];
+  if (!p) return { cost: 50, currency: 'shard', label: '50 Shards' };
+  if (typeof p === 'number') return { cost: p, currency: 'shard', label: `${p} Shards` };
+  return p;
+}
+
+/**
+ * State & navigasi untuk HERO COMMAND PANEL / SHOP
+ */
+let currentHeroShopTab = 'all'; // 'all' | 'starter' | 'mech' | 'owned'
+let currentHeroShopPage = 1;
+const HEROES_PER_PAGE = 6;
+let heroStatusFilterMode = 'deployed'; // 'deployed' | 'all'
+
+function setHeroShopTab(tab) {
+  currentHeroShopTab = tab;
+  currentHeroShopPage = 1;
+  _heroPanelBuiltForWave = -1;
+  _heroPanelHeroCount = -1;
+  buildHeroPanel(gameState ? gameState.currentWave : 0);
+  _updateHeroShopTabButtons();
+}
+
+function _updateHeroShopTabButtons() {
+  const tabs = document.querySelectorAll('.hs-tab');
+  tabs.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === currentHeroShopTab);
+  });
+}
+
+function changeHeroShopPage(delta) {
+  const filtered = _getFilteredShopHeroes();
+  const maxPages = Math.max(1, Math.ceil(filtered.length / HEROES_PER_PAGE));
+  currentHeroShopPage = Math.min(maxPages, Math.max(1, currentHeroShopPage + delta));
+  _heroPanelBuiltForWave = -1;
+  _heroPanelHeroCount = -1;
+  buildHeroPanel(gameState ? gameState.currentWave : 0);
+}
+
+function _getFilteredShopHeroes() {
+  if (currentHeroShopTab === 'starter') {
+    return STARTER_HERO_IDS;
+  } else if (currentHeroShopTab === 'mech') {
+    return CYBER_MECH_HERO_IDS;
+  } else if (currentHeroShopTab === 'owned') {
+    return ALL_HERO_IDS.filter(id => getHero(id) !== null);
+  }
+  return ALL_HERO_IDS;
+}
+
+function setHeroStatusMode(mode) {
+  heroStatusFilterMode = mode;
+  buildSidebarHeroCards();
+  const btnDeployed = document.getElementById('hs-status-mode-deployed');
+  const btnAll = document.getElementById('hs-status-mode-all');
+  if (btnDeployed) btnDeployed.classList.toggle('active', mode === 'deployed');
+  if (btnAll) btnAll.classList.toggle('active', mode === 'all');
+}
 
 /**
  * Set hero mana yang "dikontrol" (dipilih untuk gerak & panel kanan).
- * BUG FIX ROOT CAUSE: buildHeroPanel() dipanggil setiap frame dari update(),
- * menyebabkan seluruh DOM #hero-icons di-rebuild via innerHTML=''. Ketika
- * button baru dibuat dan onClick-nya membuka panel, document-level click
- * listener (yang memeriksa apakah target berada di luar popup) langsung
- * menutupnya lagi karena node DOM lama sudah di-detach sehingga
- * heroIcons.contains(e.target) mengembalikan false.
- *
- * FIX: pisahkan "build" (sekali saat state berubah) dari "refresh" (tiap frame
- * hanya update teks/class tanpa rebuild DOM). Panel kanan (permanen) menggantikan
- * popup transien, sehingga tidak ada lagi masalah event propagation pada popup.
  */
 let _heroPanelBuiltForWave = -1;  // wave terakhir saat panel di-build ulang penuh
 let _heroPanelHeroCount   = 0;    // jumlah hero terakhir saat panel di-build
@@ -522,28 +620,45 @@ function selectControlledHero(heroId) {
   refreshHeroUpgradePanel();
 }
 
-/** Rebuild penuh panel ikon hero -- hanya dipanggil saat jumlah/state hero berubah */
+/** Rebuild penuh panel ikon hero -- mendukung pagination & category filter */
 function buildHeroPanel(currentWave) {
   const heroList = (typeof heroes !== 'undefined') ? heroes : [];
   const heroCount = heroList.length;
 
+  const container = document.getElementById('hero-icons');
+  if (!container) return;
+
   // Hanya rebuild jika ada perubahan struktural
   if (_heroPanelBuiltForWave === currentWave && _heroPanelHeroCount === heroCount) {
-    // Tidak ada perubahan struktural, cukup update teks ringan
     _updateHeroIconLabels();
     return;
   }
   _heroPanelBuiltForWave = currentWave;
   _heroPanelHeroCount = heroCount;
 
-  const container = document.getElementById('hero-icons');
-  if (!container) return;
   container.innerHTML = '';
 
-  const heroOrder = ['king', 'knight', 'queen'];
-  heroOrder.forEach(heroId => {
+  const allFiltered = _getFilteredShopHeroes();
+  const maxPages = Math.max(1, Math.ceil(allFiltered.length / HEROES_PER_PAGE));
+  if (currentHeroShopPage > maxPages) currentHeroShopPage = maxPages;
+
+  // Update pagination indicator
+  const pageIndicator = document.getElementById('hs-page-indicator');
+  if (pageIndicator) {
+    pageIndicator.textContent = `${currentHeroShopPage}/${maxPages}`;
+  }
+  const prevBtn = document.getElementById('hs-page-prev');
+  const nextBtn = document.getElementById('hs-page-next');
+  if (prevBtn) prevBtn.disabled = currentHeroShopPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentHeroShopPage >= maxPages;
+
+  const startIdx = (currentHeroShopPage - 1) * HEROES_PER_PAGE;
+  const pageHeroes = allFiltered.slice(startIdx, startIdx + HEROES_PER_PAGE);
+
+  pageHeroes.forEach(heroId => {
     const heroInst = getHero(heroId);
     const def = HERO_DEFS[heroId];
+    if (!def) return;
     const isOwned = heroInst !== null;
 
     const btn = document.createElement('button');
@@ -552,26 +667,33 @@ function buildHeroPanel(currentWave) {
     btn.style.borderColor = def.color;
     btn.dataset.heroId = heroId;
 
+    // Short name formatting
+    const shortName = def.name.replace(/ Unit| Mk\.V/g, '').slice(0, 7);
+
     if (isOwned) {
       btn.innerHTML = `
-        <div style="color:${def.color}; font-size:9px;">${def.name[0]}</div>
-        <div style="font-size:6px;">${def.name}</div>
+        <div style="color:${def.color}; font-size:8px; font-weight:bold;">${def.name[0]}</div>
+        <div style="font-size:5px; white-space:nowrap; overflow:hidden;">${shortName}</div>
         <div id="hero-icon-lv-${heroId}" style="font-size:5px; color:#FFD700;">Lv${heroInst.level}</div>
       `;
-      // FIX: event listener di-attach sekali di sini, TIDAK di-rebuild setiap frame
+      btn.title = `${def.name} (Lv${heroInst.level}) - Click to command`;
       btn.addEventListener('click', () => {
         selectControlledHero(heroId);
       });
     } else {
-      // Hero belum dibeli: tampilkan tombol beli
-      const price = HERO_BUY_PRICES[heroId] || 999;
+      // Hero belum dibeli: tampilkan harga Shards / Bits
+      const priceInfo = getHeroBuyPriceInfo(heroId);
+      const isBit = priceInfo.currency === 'bits';
+      const curIcon = isBit ? '■' : '◆';
+      const curColor = isBit ? '#39FF14' : '#BF5AF2';
+
       btn.innerHTML = `
         <div style="color:${def.color}; font-size:8px;">${def.name[0]}</div>
-        <div style="font-size:5px;">${def.name}</div>
-        <div style="font-size:5px; color:#FFD700;">${price}</div>
-        <div style="font-size:4px; color:#888;">shard</div>
+        <div style="font-size:5px; white-space:nowrap; overflow:hidden;">${shortName}</div>
+        <div style="font-size:5px; color:${curColor}; font-weight:bold;">${priceInfo.cost}${curIcon}</div>
+        <div style="font-size:4px; color:#aaa;">BUY</div>
       `;
-      /* REFINEMENT 2 (ui.js buildHeroPanel): label satuan "bits" -> "shard" */
+      btn.title = `Unlock & deploy ${def.name} for ${priceInfo.cost} ${isBit ? 'Data Bits' : 'Crypto Shards'}`;
       btn.addEventListener('click', () => {
         buyHero(heroId);
       });
@@ -582,12 +704,12 @@ function buildHeroPanel(currentWave) {
   });
 
   _updateHeroIconSelection();
+  _updateHeroShopTabButtons();
 }
 
 /** Update hanya teks level di ikon tanpa rebuild DOM */
 function _updateHeroIconLabels() {
-  const heroOrder = ['king', 'knight', 'queen'];
-  heroOrder.forEach(heroId => {
+  ALL_HERO_IDS.forEach(heroId => {
     const heroInst = getHero(heroId);
     const lvEl = document.getElementById(`hero-icon-lv-${heroId}`);
     if (lvEl && heroInst) {
@@ -598,8 +720,7 @@ function _updateHeroIconLabels() {
 
 /** Update class "hero-controlled" pada ikon sesuai controlledHeroId */
 function _updateHeroIconSelection() {
-  const heroOrder = ['king', 'knight', 'queen'];
-  heroOrder.forEach(heroId => {
+  ALL_HERO_IDS.forEach(heroId => {
     const btn = document.getElementById(`hero-icon-btn-${heroId}`);
     if (!btn) return;
     if (heroId === controlledHeroId) {
@@ -611,19 +732,33 @@ function _updateHeroIconSelection() {
 }
 
 /**
- * Beli hero non-starter dengan Crypto Shard.
- * REFINEMENT 2 (ui.js buyHero): ganti dataBits -> cryptoShards,
- * spendDataBits -> spendCryptoShards, pesan notif diperbarui.
- * Hero starter ditentukan oleh pilihan di Character Select (gratis).
+ * Beli hero non-starter & reinforcement unit:
+ * Mendukung Crypto Shards dan Data Bits sesuai harga hero masing-masing.
  */
 function buyHero(heroId) {
-  const price = HERO_BUY_PRICES[heroId];
-  if (!price) return;
-  if (cryptoShards < price) {
-    showNotification(`Tidak cukup Crypto Shard! Butuh ${price} shard.`, 2000, '#FF2D55');
+  const priceInfo = getHeroBuyPriceInfo(heroId);
+  const cost = priceInfo.cost;
+  const currency = priceInfo.currency;
+
+  if (getHero(heroId)) {
+    showNotification(`${HERO_DEFS[heroId]?.name || heroId} sudah di-deploy!`, 1500, '#FFD700');
     return;
   }
-  spendCryptoShards(price);
+
+  if (currency === 'bits') {
+    if (dataBits < cost) {
+      showNotification(`Tidak cukup Data Bits! Butuh ${cost} bits.`, 2000, '#FF2D55');
+      return;
+    }
+    spendDataBits(cost);
+  } else {
+    if (cryptoShards < cost) {
+      showNotification(`Tidak cukup Crypto Shard! Butuh ${cost} shard.`, 2000, '#FF2D55');
+      return;
+    }
+    spendCryptoShards(cost);
+  }
+
   // Tambahkan hero ke array heroes
   const newHero = new Hero(heroId);
   heroes.push(newHero);
@@ -636,10 +771,18 @@ function buyHero(heroId) {
   _heroPanelBuiltForWave = -1;
   _heroPanelHeroCount = -1;
   buildHeroPanel(gameState ? gameState.currentWave : 0);
-  buildSidebarHeroCards(); // GDD v1.3: also rebuild sidebar cards
+  buildSidebarHeroCards();
   refreshHeroUpgradePanel();
   sfxTowerUpgrade();
-  showNotification(`${HERO_DEFS[heroId].name} berhasil dibeli!`, 2000, HERO_DEFS[heroId].color);
+
+  // Refresh modal if open
+  const modal = document.getElementById('hero-shop-modal');
+  if (modal && modal.style.display !== 'none') {
+    renderHeroShopModalContent();
+  }
+
+  const def = HERO_DEFS[heroId];
+  showNotification(`${def?.name || heroId} berhasil di-deploy!`, 2500, def?.color || '#00FFFF');
 }
 
 // =============================================================
@@ -697,20 +840,24 @@ function refreshHeroUpgradePanel() {
 
   const def = HERO_DEFS[heroInst.defId];
   const nextCost = heroInst.upgradeCost;
-  // REFINEMENT 2 (ui.js refreshHeroUpgradePanel): cek cryptoShards, bukan dataBits
-  const canAfford = cryptoShards >= nextCost && heroInst.level < 10;
+  // Cek cryptoShards, bukan dataBits; max level 50
+  const canAfford = cryptoShards >= nextCost && heroInst.level < 50 && nextCost !== Infinity;
 
   let statsHtml = '';
-  if (heroInst.defId === 'king') {
+  if (heroInst.defId === 'king' || heroInst.defId === 'aegis_guard') {
+    const auraRad = typeof heroInst.getKingAuraRadius === 'function' ? heroInst.getKingAuraRadius() : (3 + Math.floor(heroInst.level / 6));
+    const dmgMult = typeof heroInst.getKingDamageMult === 'function' ? heroInst.getKingDamageMult() : (1 + 0.05 * heroInst.level);
+    const spdMult = typeof heroInst.getKingSpeedMult === 'function' ? heroInst.getKingSpeedMult() : (1 + 0.03 * heroInst.level);
+    const rngMult = typeof heroInst.getKingRangeMult === 'function' ? heroInst.getKingRangeMult() : (1 + 0.03 * heroInst.level);
     statsHtml = `
-      <tr><td>HP</td><td>${def.baseHp}</td></tr>
-      <tr><td>Armor</td><td>${def.baseArmor}</td></tr>
-      <tr><td>Aura Radius</td><td>${heroInst.getKingAuraRadius()} tile</td></tr>
-      <tr><td>Dmg Buff</td><td>+${Math.round((heroInst.getKingDamageMult()-1)*100)}%</td></tr>
-      <tr><td>Spd Buff</td><td>+${Math.round((heroInst.getKingSpeedMult()-1)*100)}%</td></tr>
-      <tr><td>Rng Buff</td><td>+${Math.round((heroInst.getKingRangeMult()-1)*100)}%</td></tr>
+      <tr><td>HP</td><td>${Math.ceil(heroInst.hp)}/${heroInst.maxHp}</td></tr>
+      <tr><td>Armor</td><td>${heroInst.armor}</td></tr>
+      <tr><td>Aura Radius</td><td>${auraRad} tile</td></tr>
+      <tr><td>Dmg Buff</td><td>+${Math.round((dmgMult - 1) * 100)}%</td></tr>
+      <tr><td>Spd Buff</td><td>+${Math.round((spdMult - 1) * 100)}%</td></tr>
+      <tr><td>Rng Buff</td><td>+${Math.round((rngMult - 1) * 100)}%</td></tr>
     `;
-  } else if (heroInst.defId === 'knight') {
+  } else if (heroInst.defId === 'knight' || heroInst.defId === 'ronin') {
     statsHtml = `
       <tr><td>HP</td><td id="knight-stat-hp">${Math.ceil(heroInst.hp)}/${heroInst.maxHp}</td></tr>
       <tr><td>Damage</td><td>${heroInst.damage}</td></tr>
@@ -719,13 +866,26 @@ function refreshHeroUpgradePanel() {
         <td colspan="2" style="color:#ff4444;" id="knight-stat-respawn">RESPAWN ${Math.ceil(heroInst.respawnTimer)}s</td>
       </tr>
     `;
-  } else if (heroInst.defId === 'queen') {
+  } else if (heroInst.defId === 'queen' || heroInst.defId === 'valkyrie') {
+    const shardRate = typeof heroInst.getCryptoShardsPerSec === 'function'
+      ? heroInst.getCryptoShardsPerSec()
+      : (typeof heroInst.cryptoShardsPerSec === 'number' ? heroInst.cryptoShardsPerSec : (0.5 + 0.3 * heroInst.level));
+    const maxShard = typeof heroInst.getMaxShards === 'function'
+      ? heroInst.getMaxShards()
+      : (typeof heroInst.maxShards === 'number' ? heroInst.maxShards : (100 * heroInst.level));
     statsHtml = `
-      <tr><td>HP</td><td>${def.baseHp}</td></tr>
-      <tr><td>Armor</td><td>${def.baseArmor}</td></tr>
-      <tr><td>Shard/dtk</td><td>${heroInst.getCryptoShardsPerSec().toFixed(1)}</td></tr>
-      <tr><td>Max Shard</td><td>${heroInst.getMaxShards()}</td></tr>
-      <tr><td>Summon Slot</td><td>${Math.min(1+Math.floor(heroInst.level/3),5)}</td></tr>
+      <tr><td>HP</td><td>${Math.ceil(heroInst.hp)}/${heroInst.maxHp}</td></tr>
+      <tr><td>Armor</td><td>${heroInst.armor}</td></tr>
+      <tr><td>Shard/dtk</td><td>${shardRate.toFixed(1)}</td></tr>
+      <tr><td>Max Shard</td><td>${maxShard}</td></tr>
+      <tr><td>Summon Slot</td><td>${Math.min(1 + Math.floor(heroInst.level / 3), 5)}</td></tr>
+    `;
+  } else {
+    statsHtml = `
+      <tr><td>HP</td><td>${Math.ceil(heroInst.hp)}/${heroInst.maxHp}</td></tr>
+      <tr><td>Damage</td><td>${heroInst.damage}</td></tr>
+      <tr><td>Armor</td><td>${heroInst.armor}</td></tr>
+      ${heroInst.skillDef ? `<tr><td>Skill</td><td>${heroInst.skillDef.name} (${heroInst.skillDef.cd}s)</td></tr>` : ''}
     `;
   }
 
@@ -738,14 +898,13 @@ function refreshHeroUpgradePanel() {
     <table class="hero-upgrade-stat-table">
       ${statsHtml}
     </table>
-    ${heroInst.level < 10
+    ${heroInst.level < 50
       ? `<button
            id="btn-upgrade-hero-panel"
            class="hero-upgrade-btn${canAfford ? '' : ' disabled-btn'}"
            ${canAfford ? '' : 'disabled'}>
            UPGRADE<br>
            <span style="color:#39FF14; font-size:5px;">Lv${heroInst.level+1} - ${nextCost === Infinity ? 'MAX' : nextCost+' shard'}</span>
-           <!-- REFINEMENT 2: label satuan "bits" -> "shard" -->
          </button>`
       : '<div style="color:#FFD700; font-size:5px; text-align:center; padding:4px;">LEVEL MAX</div>'
     }
@@ -779,7 +938,7 @@ function _refreshHeroPanelAffordability() {
   const heroInst = getHero(controlledHeroId);
   if (!heroInst) return;
   const nextCost = heroInst.upgradeCost;
-  const canAfford = cryptoShards >= nextCost && heroInst.level < 10;
+  const canAfford = cryptoShards >= nextCost && heroInst.level < 50 && nextCost !== Infinity;
   const btn = document.getElementById('btn-upgrade-hero-panel');
   if (btn) {
     btn.disabled = !canAfford;
@@ -967,17 +1126,31 @@ function launchGame() {
 
 /**
  * buildSidebarHeroCards() — called once per initGame and after buyHero.
- * Creates static DOM structure for all three heroes; subsequent per-frame
+ * Creates static DOM structure for heroes; subsequent per-frame
  * updates only mutate text + class, never rebuild innerHTML.
+ * Supports 'deployed' (only active units) vs 'all' (entire roster) modes.
  */
 function buildSidebarHeroCards() {
   const container = document.getElementById('sidebar-hero-cards');
   if (!container) return;
   container.innerHTML = '';
 
-  const heroOrder = ['king', 'knight', 'queen'];
-  heroOrder.forEach(heroId => {
+  const heroesToRender = heroStatusFilterMode === 'deployed'
+    ? ALL_HERO_IDS.filter(id => getHero(id) !== null)
+    : ALL_HERO_IDS;
+
+  if (heroesToRender.length === 0) {
+    container.innerHTML = `
+      <div style="font-size:6px; color:#666; text-align:center; padding:12px 4px;">
+        Tidak ada hero aktif.<br>Beli hero di panel bawah!
+      </div>
+    `;
+    return;
+  }
+
+  heroesToRender.forEach(heroId => {
     const def = HERO_DEFS[heroId];
+    if (!def) return;
     const heroInst = getHero(heroId);
 
     const card = document.createElement('div');
@@ -987,17 +1160,25 @@ function buildSidebarHeroCards() {
 
     if (!heroInst) {
       // Hero not yet owned — show buy prompt
-      const price = HERO_BUY_PRICES[heroId] || 0;
+      const priceInfo = getHeroBuyPriceInfo(heroId);
+      const isBit = priceInfo.currency === 'bits';
+      const curIcon = isBit ? '■' : '◆';
+      const curColor = isBit ? '#39FF14' : '#BF5AF2';
+
       card.innerHTML = `
         <div class="shc-header">
           <div class="shc-name" style="color:${def.color};">${def.name}</div>
           <div class="shc-level" style="color:#555;">—</div>
         </div>
-        <div style="font-size:5px;color:#555;margin-bottom:4px;">Not deployed</div>
-        <button class="shc-upgrade-btn" style="border-color:${def.color};color:${def.color};"
-          onclick="buyHero('${heroId}')">BUY ${price}&#9670;</button>
+        <div style="font-size:5px;color:#777;margin-bottom:4px;">${def.role || 'Combat Unit'} • Not deployed</div>
+        <button class="shc-upgrade-btn" style="border-color:${curColor};color:${curColor};"
+          onclick="buyHero('${heroId}')">BUY ${priceInfo.cost}${curIcon}</button>
       `;
     } else {
+      const primaryStat = heroInst.damage > 0
+        ? `Dmg: <span>${heroInst.damage}</span>`
+        : (heroInst.defId === 'queen' ? `Shard: <span>+${(heroInst.cryptoShardsPerSec || 0.8).toFixed(1)}/s</span>` : `Buff Aura`);
+
       card.innerHTML = `
         <div class="shc-header">
           <div class="shc-name" style="color:${def.color};">${def.name}</div>
@@ -1010,8 +1191,7 @@ function buildSidebarHeroCards() {
           ${Math.ceil(heroInst.hp)}/${heroInst.maxHp}
         </div>
         <div class="shc-stats" id="shc-stats-${heroId}">
-          Armor: <span>${heroInst.armor}</span>
-          ${heroInst.defId === 'knight' ? `&nbsp;Dmg: <span>${heroInst.damage}</span>` : ''}
+          Arm: <span>${heroInst.armor}</span> &nbsp;${primaryStat}
         </div>
         <button class="shc-upgrade-btn" id="shc-upg-${heroId}"
           onclick="_sidebarUpgradeHero('${heroId}')">
@@ -1038,21 +1218,19 @@ function buildSidebarHeroCards() {
  * Only mutates existing DOM text/class — never rebuilds innerHTML.
  */
 function updateSidebarHeroCards() {
-  const heroOrder = ['king', 'knight', 'queen'];
-  heroOrder.forEach(heroId => {
+  ALL_HERO_IDS.forEach(heroId => {
     const heroInst = getHero(heroId);
     const card     = document.getElementById(`shc-${heroId}`);
     if (!card) return;
 
     if (!heroInst) return; // hero not owned yet
 
-    // HP bar (Priority 4: in-field HP linked to sidebar card)
+    // HP bar
     const hpPct  = heroInst.maxHp > 0 ? Math.max(0, heroInst.hp / heroInst.maxHp) * 100 : 0;
     const hpBar  = document.getElementById(`shc-hp-bar-${heroId}`);
     const hpTxt  = document.getElementById(`shc-hp-txt-${heroId}`);
     if (hpBar) {
       hpBar.style.width = hpPct + '%';
-      // Colour: green > 50%, yellow > 25%, red < 25%
       hpBar.style.background = hpPct > 50 ? '#39FF14' : hpPct > 25 ? '#FFD700' : '#FF2D55';
     }
     if (hpTxt) hpTxt.textContent = `${Math.max(0,Math.ceil(heroInst.hp))}/${heroInst.maxHp}`;
@@ -1064,8 +1242,10 @@ function updateSidebarHeroCards() {
     // Stats
     const statsEl = document.getElementById(`shc-stats-${heroId}`);
     if (statsEl) {
-      statsEl.innerHTML = `Armor: <span>${heroInst.armor}</span>` +
-        (heroId === 'knight' ? ` &nbsp;Dmg: <span>${heroInst.damage}</span>` : '');
+      const primaryStat = heroInst.damage > 0
+        ? `Dmg: <span>${heroInst.damage}</span>`
+        : (heroInst.defId === 'queen' ? `Shard: <span>+${(heroInst.cryptoShardsPerSec || 0.8).toFixed(1)}/s</span>` : `Buff Aura`);
+      statsEl.innerHTML = `Arm: <span>${heroInst.armor}</span> &nbsp;${primaryStat}`;
     }
 
     // Upgrade button cost
@@ -1076,7 +1256,7 @@ function updateSidebarHeroCards() {
       upgBtn.disabled  = cost === Infinity || cryptoShards < cost;
     }
 
-    // Respawn overlay for Knight
+    // Respawn overlay for any hero
     const respawnEl = document.getElementById(`shc-respawn-${heroId}`);
     if (respawnEl) {
       if (heroInst.isDead && heroInst.isRespawning) {
@@ -1113,6 +1293,132 @@ function _sidebarUpgradeHero(heroId) {
   } else {
     showNotification('Not enough Crypto Shards!', 1500, '#FF2D55');
   }
+}
+
+// =====================================================================
+// === FULL HERO SHOP & ROSTER MODAL ===================================
+// =====================================================================
+
+let modalHeroFilterTab = 'all'; // 'all' | 'starter' | 'mech' | 'deployed'
+
+function openHeroShopModal() {
+  const modal = document.getElementById('hero-shop-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  renderHeroShopModalContent();
+}
+
+function closeHeroShopModal() {
+  const modal = document.getElementById('hero-shop-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function setHeroModalTab(tab) {
+  modalHeroFilterTab = tab;
+  renderHeroShopModalContent();
+}
+
+function renderHeroShopModalContent() {
+  const grid = document.getElementById('hero-modal-grid');
+  if (!grid) return;
+
+  // Update current wallet in modal header
+  const shardBal = document.getElementById('hero-modal-shards-val');
+  const bitsBal = document.getElementById('hero-modal-bits-val');
+  if (shardBal) shardBal.textContent = Math.floor(cryptoShards);
+  if (bitsBal) bitsBal.textContent = Math.floor(dataBits);
+
+  // Update modal tab buttons
+  const tabs = document.querySelectorAll('.hero-modal-tab-btn');
+  tabs.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === modalHeroFilterTab);
+  });
+
+  let heroList = ALL_HERO_IDS;
+  if (modalHeroFilterTab === 'starter') {
+    heroList = STARTER_HERO_IDS;
+  } else if (modalHeroFilterTab === 'mech') {
+    heroList = CYBER_MECH_HERO_IDS;
+  } else if (modalHeroFilterTab === 'deployed') {
+    heroList = ALL_HERO_IDS.filter(id => getHero(id) !== null);
+  }
+
+  grid.innerHTML = '';
+
+  if (heroList.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align:center; padding: 24px; color:#777; font-size:8px;">
+        Tidak ada unit yang cocok dengan filter saat ini.
+      </div>
+    `;
+    return;
+  }
+
+  heroList.forEach(heroId => {
+    const def = HERO_DEFS[heroId];
+    if (!def) return;
+    const heroInst = getHero(heroId);
+    const isDeployed = heroInst !== null;
+    const isStarter = STARTER_HERO_IDS.includes(heroId);
+    const priceInfo = getHeroBuyPriceInfo(heroId);
+    const isBit = priceInfo.currency === 'bits';
+    const curIcon = isBit ? '■' : '◆';
+    const curColor = isBit ? '#39FF14' : '#BF5AF2';
+
+    const card = document.createElement('div');
+    card.className = 'hero-modal-card' + (isDeployed ? ' deployed' : '');
+    card.style.borderColor = def.color;
+
+    // Action button
+    let actionBtnHtml = '';
+    if (isDeployed) {
+      const isControlled = controlledHeroId === heroId;
+      actionBtnHtml = `
+        <div class="hm-status-badge deployed">ACTIVE (Lv${heroInst.level})</div>
+        <button class="hm-btn select ${isControlled ? 'controlled' : ''}" onclick="selectControlledHero('${heroId}'); renderHeroShopModalContent();">
+          ${isControlled ? 'COMMANDING' : 'SELECT HERO'}
+        </button>
+      `;
+    } else {
+      actionBtnHtml = `
+        <div class="hm-price-tag" style="color:${curColor};">
+          COST: <strong>${priceInfo.cost} ${isBit ? 'Data Bits' : 'Shards'}</strong> (${curIcon})
+        </div>
+        <button class="hm-btn buy" style="background:${def.color}22; border-color:${def.color}; color:${def.color};"
+          onclick="buyHero('${heroId}')">
+          UNLOCK & DEPLOY
+        </button>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="hm-card-header">
+        <div class="hm-avatar" style="background:${def.color}22; border: 1.5px solid ${def.color}; color:${def.color};">
+          ${def.name[0]}
+        </div>
+        <div class="hm-title-wrap">
+          <div class="hm-card-name" style="color:${def.color};">${def.name}</div>
+          <div class="hm-card-role">${def.role || 'Cyber Vanguard'} ${isStarter ? '• [STARTER]' : '• [MECH REINFORCEMENT]'}</div>
+        </div>
+      </div>
+      <div class="hm-desc">${def.description || def.desc || 'Unit cybernetic mutakhir untuk memperkuat pertahanan PPKD Core.'}</div>
+      <div class="hm-stats-grid">
+        <div class="hm-stat"><span>HP</span> ${heroInst ? Math.ceil(heroInst.hp) + '/' + heroInst.maxHp : def.baseHp}</div>
+        <div class="hm-stat"><span>ARMOR</span> ${heroInst ? heroInst.armor : def.baseArmor}</div>
+        <div class="hm-stat"><span>DAMAGE</span> ${def.baseDamage > 0 ? (heroInst ? heroInst.damage : def.baseDamage) : 'Support'}</div>
+        <div class="hm-stat"><span>SPEED</span> ${def.speed || 1.0}x</div>
+      </div>
+      <div class="hm-skill-wrap">
+        <div class="hm-skill-title" style="color:${def.color};">SKILL: ${def.skillName || 'Autonomous Defense'}</div>
+        <div class="hm-skill-desc">${def.skillDesc || 'Aktif menyerang dan melindungi area di sekitar PPKD Core.'}</div>
+      </div>
+      <div class="hm-action-wrap">
+        ${actionBtnHtml}
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
 }
 
 // =====================================================================

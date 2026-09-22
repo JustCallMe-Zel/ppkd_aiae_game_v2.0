@@ -367,12 +367,52 @@ html, body {
 /* -------------------------------------------------------
    HERO STATUS CARDS IN SIDEBAR (Priority 3 + 5)
 ------------------------------------------------------- */
-#sidebar-hero-cards { padding: 6px 6px 2px; display: flex; flex-direction: column; gap: 8px; }
+.hero-status-toggle {
+  display: flex;
+  gap: 2px;
+}
+.hs-status-mode-btn {
+  background: transparent;
+  border: 1px solid var(--border-neon);
+  color: #888;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.hs-status-mode-btn.active {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  background: rgba(0, 255, 255, 0.1);
+}
+.sidebar-cards-scroll-wrap {
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+.sidebar-cards-scroll-wrap::-webkit-scrollbar,
+.hero-icons-scroll-wrap::-webkit-scrollbar,
+.hero-modal-content-wrap::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-cards-scroll-wrap::-webkit-scrollbar-thumb,
+.hero-icons-scroll-wrap::-webkit-scrollbar-thumb,
+.hero-modal-content-wrap::-webkit-scrollbar-thumb {
+  background: var(--neon-cyan);
+}
+.sidebar-cards-scroll-wrap::-webkit-scrollbar-track,
+.hero-icons-scroll-wrap::-webkit-scrollbar-track,
+.hero-modal-content-wrap::-webkit-scrollbar-track {
+  background: #0d0d1a;
+}
+
+#sidebar-hero-cards { padding: 4px 6px 2px; display: flex; flex-direction: column; gap: 6px; }
 
 .sidebar-hero-card {
   background: var(--deep-blue-gray);
   border: 1px solid var(--border-neon);
-  padding: 8px 8px 6px;
+  padding: 6px 6px 5px;
   position: relative;
   transition: border-color 0.15s;
 }
@@ -500,40 +540,379 @@ html, body {
 .passive-rate   { padding: 2px 8px; font-size: 6px; }
 
 /* -------------------------------------------------------
-   DEPLOY HERO PANEL IN SIDEBAR
+   DEPLOY HERO & COMMAND PANEL IN SIDEBAR
 ------------------------------------------------------- */
-#hero-icons {
+.hero-shop-btn-mini {
+  background: rgba(0, 255, 255, 0.12);
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  padding: 2px 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.hero-shop-btn-mini:hover {
+  background: var(--neon-cyan);
+  color: var(--void-black);
+}
+
+.hero-shop-nav-bar {
   display: flex;
-  gap: 5px;
-  padding: 6px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 4px;
+}
+
+.hero-shop-filter-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.hs-tab {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #888;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.hs-tab.active {
+  color: var(--electric-yellow);
+  border-color: var(--electric-yellow);
+  background: rgba(255, 215, 0, 0.12);
+}
+
+.hero-shop-pagination {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 5px;
+  color: #aaa;
+}
+
+.hs-page-btn {
+  background: #0d0d1a;
+  border: 1px solid var(--border-neon);
+  color: var(--neon-cyan);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hs-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.hero-icons-scroll-wrap {
+  max-height: 125px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 6px;
+}
+
+#hero-icons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
 }
 
 .hero-icon-btn {
-  width: 44px;
-  height: 44px;
-  border: 2px solid var(--border-neon);
+  width: 100%;
+  height: 48px;
+  border: 1.5px solid var(--border-neon);
   background: var(--deep-blue-gray);
   cursor: pointer;
   font-family: 'Press Start 2P', monospace;
-  font-size: 6px;
+  font-size: 5px;
   color: var(--ghost-white);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.1s;
+  padding: 2px;
+  box-sizing: border-box;
 }
-.hero-icon-btn:hover           { border-color: var(--neon-cyan); }
-.hero-icon-btn.hero-locked     { opacity: 0.35; cursor: not-allowed; }
-.hero-icon-btn.hero-active     { border-color: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); }
+.hero-icon-btn:hover           { border-color: var(--neon-cyan); transform: scale(1.02); }
+.hero-icon-btn.hero-locked     { opacity: 0.45; }
+.hero-icon-btn.hero-active     { border-color: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); }
 .hero-icon-btn.hero-controlled {
   border-color: var(--electric-yellow) !important;
   box-shadow: 0 0 8px var(--electric-yellow);
 }
-.hero-icon-btn.hero-buyable    { opacity: 0.7; cursor: pointer; border-style: dashed; }
-.hero-icon-btn.hero-buyable:hover { opacity: 1; border-color: var(--digital-green); border-style: solid; }
+.hero-icon-btn.hero-buyable    { opacity: 0.85; cursor: pointer; border-style: dashed; }
+.hero-icon-btn.hero-buyable:hover {
+  opacity: 1;
+  border-color: var(--digital-green);
+  border-style: solid;
+  box-shadow: 0 0 6px var(--digital-green);
+}
+
+/* -------------------------------------------------------
+   FULL HERO SHOP & ROSTER MODAL
+------------------------------------------------------- */
+.hero-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 5, 12, 0.88);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.hero-modal-box {
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  background: #0a0b16;
+  border: 2px solid var(--neon-cyan);
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.hero-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #060710;
+  border-bottom: 1px solid var(--border-neon);
+}
+
+.hero-modal-title span {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
+.hero-modal-subtitle {
+  font-size: 5px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.hero-modal-wallet {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 6px;
+}
+
+.hm-wallet-item {
+  background: #111224;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-modal-close-btn {
+  background: #FF2D55;
+  color: #fff;
+  border: 1px solid #FF2D55;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.hero-modal-close-btn:hover {
+  background: #fff;
+  color: #FF2D55;
+}
+
+.hero-modal-tabs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #0d0f1f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hero-modal-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.hero-modal-tab-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #aaa;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.hero-modal-tab-btn.active {
+  background: rgba(0, 255, 255, 0.15);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.25);
+}
+
+.hero-modal-content-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+}
+
+.hero-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.hero-modal-card {
+  background: #111322;
+  border: 1.5px solid var(--border-neon);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s;
+}
+
+.hero-modal-card.deployed {
+  background: #0f1826;
+}
+
+.hm-card-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hm-avatar {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.hm-card-name {
+  font-size: 7px;
+  margin-bottom: 2px;
+}
+
+.hm-card-role {
+  font-size: 5px;
+  color: #777;
+}
+
+.hm-desc {
+  font-size: 5px;
+  color: #aaa;
+  line-height: 1.4;
+  min-height: 24px;
+}
+
+.hm-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  background: #080912;
+  padding: 6px;
+  font-size: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hm-stat span {
+  color: #777;
+  margin-right: 4px;
+}
+
+.hm-skill-wrap {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  border-left: 2px solid var(--neon-cyan);
+}
+
+.hm-skill-title {
+  font-size: 5px;
+  margin-bottom: 3px;
+}
+
+.hm-skill-desc {
+  font-size: 5px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.hm-action-wrap {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hm-status-badge {
+  font-size: 5px;
+  text-align: center;
+  padding: 3px;
+  border: 1px solid #39FF14;
+  color: #39FF14;
+  background: rgba(57, 255, 20, 0.1);
+}
+
+.hm-price-tag {
+  font-size: 5px;
+  text-align: center;
+}
+
+.hm-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  padding: 6px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.12s;
+  text-align: center;
+}
+
+.hm-btn.buy:hover {
+  filter: brightness(1.25);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.hm-btn.select {
+  background: transparent;
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+.hm-btn.select:hover {
+  background: var(--neon-cyan);
+  color: #000;
+}
+
+.hm-btn.select.controlled {
+  border-color: var(--electric-yellow);
+  color: var(--electric-yellow);
+  background: rgba(255, 215, 0, 0.15);
+}
 
 /* -------------------------------------------------------
    LEGACY HERO UPGRADE PANEL (kept for compat, hidden by default)

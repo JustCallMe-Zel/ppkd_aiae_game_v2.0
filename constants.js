@@ -793,8 +793,9 @@ const CORE_MAX_HP = 100;
 const BASE_PASSIVE_RATE = 1.0;      // Data Bit per detik
 const WAVE_PASSIVE_BONUS = 0.1;     // +0.1 per wave selesai
 
-// === TOWER DEFINITIONS (GDD 4a) ===
+// === TOWER DEFINITIONS (Section 2: 15 Tower Models + 8 Support Units) ===
 const TOWER_DEFS = {
+  // 1. Packet Turret
   packet_turret: {
     id: 'packet_turret',
     name: 'Packet Turret',
@@ -802,8 +803,8 @@ const TOWER_DEFS = {
     color: COLORS.METALLIC_GRAY,
     accentColor: COLORS.NEON_CYAN,
     baseCost: 50,
-    damage: 18,
-    attackSpeed: 1.0,   // shots per second
+    damage: 12,
+    attackSpeed: 2.0,   // 0.5s CD
     range: 3,           // tiles
     targeting: 'nearest',
     damageType: 'kinetic',
@@ -811,6 +812,7 @@ const TOWER_DEFS = {
     unlockWave: 1,
     size: 32,
   },
+  // 2. Firewall Cannon
   firewall_cannon: {
     id: 'firewall_cannon',
     name: 'Firewall Cannon',
@@ -818,16 +820,17 @@ const TOWER_DEFS = {
     color: COLORS.NEON_RED,
     accentColor: '#FF6B00',
     baseCost: 180,
-    damage: 30,
-    attackSpeed: 0.7,
-    range: 4,
+    damage: 25,
+    attackSpeed: 0.556, // 1.8s CD
+    range: 2.5,
     targeting: 'strongest',
     damageType: 'fire',
-    dotDamage: 8,       // damage per detik
-    dotDuration: 3.0,   // detik
+    dotDamage: 8,       // 8 burn dmg/s
+    dotDuration: 3.0,   // 3s
     unlockWave: 3,
     size: 32,
   },
+  // 3. Logic Gate Array
   logic_gate_array: {
     id: 'logic_gate_array',
     name: 'Logic Gate Array',
@@ -835,17 +838,395 @@ const TOWER_DEFS = {
     color: COLORS.ELECTRIC_YELLOW,
     accentColor: '#FFAA00',
     baseCost: 220,
-    damage: 22,
-    attackSpeed: 0.8,
-    range: 3.5,
+    damage: 18,
+    attackSpeed: 0.833, // 1.2s CD
+    range: 3.2,
     targeting: 'weakest',
     damageType: 'electric',
-    chainTargets: 2,    // jumlah chain target
-    chainDamageMult: 0.5,
+    chainTargets: 3,    // chains 3 targets
+    chainDamageMult: 0.85, // -15% dmg per bounce
     unlockWave: 5,
     size: 32,
   },
-  // === Tower 4: Regex Sniper (GDD section 4a – Epic) ===
+  // 4. Cache Freeze Array
+  cache_freeze_array: {
+    id: 'cache_freeze_array',
+    name: 'Cache Freeze Array',
+    tier: 'Rare',
+    color: '#00FFFF',
+    accentColor: '#80E5FF',
+    baseCost: 250,
+    damage: 10,
+    attackSpeed: 0.667, // 1.5s CD
+    range: 2.8,
+    targeting: 'nearest',
+    damageType: 'aoe',
+    aoeRadius: 1.8,
+    slowFactor: 0.70,   // 30% slow
+    slowDuration: 2.0,
+    specialEffect: 'frost_pulse',
+    unlockWave: 4,
+    size: 32,
+  },
+  // 5. Compiler Railgun
+  compiler_railgun: {
+    id: 'compiler_railgun',
+    name: 'Compiler Railgun',
+    tier: 'Epic',
+    color: '#7B2FBE',
+    accentColor: '#00E5FF',
+    baseCost: 350,
+    damage: 45,
+    attackSpeed: 0.4,   // 2.5s CD
+    range: 5,
+    targeting: 'furthest',
+    damageType: 'kinetic',
+    pierceLine: true,
+    specialEffect: 'linear_pierce',
+    unlockWave: 7,
+    size: 32,
+  },
+  // 6. Zero-Day Mortar
+  zero_day_mortar: {
+    id: 'zero_day_mortar',
+    name: 'Zero-Day Mortar',
+    tier: 'Epic',
+    color: '#FF3300',
+    accentColor: '#FFCC00',
+    baseCost: 450,
+    damage: 60,
+    attackSpeed: 0.333, // 3.0s CD
+    range: 4,
+    targeting: 'strongest',
+    damageType: 'aoe',
+    aoeRadius: 1.5,     // 1.5 tile explosion
+    specialEffect: 'arc_mortar',
+    unlockWave: 8,
+    size: 32,
+  },
+  // 7. Quantum Beam
+  quantum_beam: {
+    id: 'quantum_beam',
+    name: 'Quantum Beam',
+    tier: 'Epic',
+    color: '#8A2BE2',
+    accentColor: '#00FFFF',
+    baseCost: 420,
+    damage: 8,          // ramping 8 to 40
+    rampMaxDmg: 40,
+    attackSpeed: 4.0,   // continuous rapid beam ticks
+    range: 3.5,
+    targeting: 'strongest',
+    damageType: 'energy',
+    specialEffect: 'ramping_beam',
+    unlockWave: 9,
+    size: 32,
+  },
+  // 8. Buffer Overflow Mortar
+  buffer_overflow_mortar: {
+    id: 'buffer_overflow_mortar',
+    name: 'Buffer Overflow Mortar',
+    tier: 'Epic',
+    color: '#B22222',
+    accentColor: '#FF6347',
+    baseCost: 380,
+    damage: 35,
+    attackSpeed: 0.455, // 2.2s CD
+    range: 3,
+    targeting: 'nearest',
+    damageType: 'aoe',
+    aoeRadius: 1.4,
+    stunDuration: 0.8,
+    specialEffect: 'stun_mortar',
+    unlockWave: 10,
+    size: 32,
+  },
+  // 9. DDoS Array
+  ddos_array: {
+    id: 'ddos_array',
+    name: 'DDoS Array',
+    tier: 'Rare',
+    color: '#0066FF',
+    accentColor: '#33CCFF',
+    baseCost: 320,
+    damage: 6,
+    burstCount: 3,      // 6x3 burst
+    attackSpeed: 1.0,   // 1s CD
+    range: 2.7,
+    targeting: 'nearest',
+    damageType: 'kinetic',
+    specialEffect: 'burst_pod',
+    unlockWave: 6,
+    size: 32,
+  },
+  // 10. Syntax Buster
+  syntax_buster: {
+    id: 'syntax_buster',
+    name: 'Syntax Buster',
+    tier: 'Rare',
+    color: '#FF0055',
+    accentColor: '#FFFFFF',
+    baseCost: 300,
+    damage: 30,
+    attackSpeed: 0.625, // 1.6s CD
+    range: 3,
+    targeting: 'strongest',
+    damageType: 'true',
+    armorPen: 0.50,     // 50% armor pen
+    specialEffect: 'armor_piercer',
+    unlockWave: 6,
+    size: 32,
+  },
+  // 11. Encryption Node
+  encryption_node: {
+    id: 'encryption_node',
+    name: 'Encryption Node',
+    tier: 'Rare',
+    color: '#4B0082',
+    accentColor: '#9370DB',
+    baseCost: 260,
+    damage: 0,
+    attackSpeed: 0.5,   // 2s CD
+    range: 3,
+    targeting: 'nearest',
+    damageType: 'debuff',
+    shieldStrip: 0.40,  // strips 40% enemy shield
+    specialEffect: 'strip_shield',
+    unlockWave: 7,
+    size: 32,
+  },
+  // 12. Algorithmic Tesla
+  algorithmic_tesla: {
+    id: 'algorithmic_tesla',
+    name: 'Algorithmic Tesla',
+    tier: 'Rare',
+    color: '#FFD700',
+    accentColor: '#FFFFFF',
+    baseCost: 340,
+    damage: 15,
+    attackSpeed: 0.714, // 1.4s CD
+    range: 2.0,         // 2 tile 360 radial shock
+    targeting: 'all_in_range',
+    damageType: 'aoe_electric',
+    specialEffect: 'radial_shock',
+    unlockWave: 5,
+    size: 32,
+  },
+  // 13. Subnet Sentry
+  subnet_sentry: {
+    id: 'subnet_sentry',
+    name: 'Subnet Sentry',
+    tier: 'Common',
+    color: '#32CD32',
+    accentColor: '#98FB98',
+    baseCost: 160,
+    damage: 8,
+    attackSpeed: 3.333, // 0.3s CD rapid
+    range: 2.2,
+    targeting: 'nearest',
+    damageType: 'kinetic',
+    specialEffect: 'rapid_fire',
+    unlockWave: 2,
+    size: 32,
+  },
+  // 14. Proxy Disrupter
+  proxy_disrupter: {
+    id: 'proxy_disrupter',
+    name: 'Proxy Disrupter',
+    tier: 'Rare',
+    color: '#20B2AA',
+    accentColor: '#AFEEEE',
+    baseCost: 310,
+    damage: 14,
+    attackSpeed: 0.588, // 1.7s CD
+    range: 3,
+    targeting: 'furthest',
+    damageType: 'spatial',
+    redirectTiles: 1,   // redirects enemy position 1 tile backward
+    specialEffect: 'spiral_redirect',
+    unlockWave: 8,
+    size: 32,
+  },
+  // 15. Overclock Turret
+  overclock_turret: {
+    id: 'overclock_turret',
+    name: 'Overclock Turret',
+    tier: 'Legendary',
+    color: '#FF1493',
+    accentColor: '#FFD700',
+    baseCost: 500,
+    damage: 20,         // 20 dmg/shot, 3-shot burst (0.2s burst CD, 3s reload)
+    attackSpeed: 0.333, // reload cycle ~3s
+    burstCount: 3,
+    burstInterval: 0.2,
+    range: 3,
+    targeting: 'strongest',
+    damageType: 'energy',
+    specialEffect: 'burst_overclock',
+    unlockWave: 11,
+    size: 32,
+  },
+
+  // === 8 SUPPORT UNITS (1x1 Grid, 2.5 tile radius, non-combat) ===
+  data_miner_rig: {
+    id: 'data_miner_rig',
+    name: 'Data Miner Rig',
+    tier: 'Support',
+    color: '#39FF14',
+    accentColor: '#7B2FBE',
+    baseCost: 120,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    bitsPerSec: 3.0,     // generates 3 Bits/sec
+    unlockWave: 1,
+    size: 32,
+  },
+  nano_repair_bay: {
+    id: 'nano_repair_bay',
+    name: 'Nano-Repair Bay',
+    tier: 'Support',
+    color: '#00E5FF',
+    accentColor: '#FFFFFF',
+    baseCost: 200,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    healPctPerSec: 0.05, // 5% max HP/sec
+    unlockWave: 4,
+    size: 32,
+  },
+  overclock_node: {
+    id: 'overclock_node',
+    name: 'Overclock Node',
+    tier: 'Support',
+    color: '#FFD700',
+    accentColor: '#FF4500',
+    baseCost: 250,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    speedBuffPct: 0.15,  // +15% tower attack speed aura
+    unlockWave: 5,
+    size: 32,
+  },
+  data_jammer: {
+    id: 'data_jammer',
+    name: 'Data Jammer',
+    tier: 'Support',
+    color: '#9400D3',
+    accentColor: '#00FFFF',
+    baseCost: 220,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    slowAuraPct: 0.20,   // 20% enemy slow aura
+    unlockWave: 4,
+    size: 32,
+  },
+  crypto_foundry_aux: {
+    id: 'crypto_foundry_aux',
+    name: 'Crypto Foundry Aux',
+    tier: 'Support',
+    color: '#DA70D6',
+    accentColor: '#FFD700',
+    baseCost: 300,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    shardsPerWave: 2,    // +2 Crypto Shards per wave
+    unlockWave: 6,
+    size: 32,
+  },
+  shield_generator: {
+    id: 'shield_generator',
+    name: 'Shield Generator',
+    tier: 'Support',
+    color: '#1E90FF',
+    accentColor: '#00FFFF',
+    baseCost: 280,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    shieldAmount: 50,    // 50 HP shield to towers
+    regenInterval: 8.0,
+    unlockWave: 7,
+    size: 32,
+  },
+  range_expander: {
+    id: 'range_expander',
+    name: 'Range Expander',
+    tier: 'Support',
+    color: '#32CD32',
+    accentColor: '#00FFCC',
+    baseCost: 240,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    rangeBuffPct: 0.15,  // +15% tower range aura
+    unlockWave: 6,
+    size: 32,
+  },
+  resource_amplifier: {
+    id: 'resource_amplifier',
+    name: 'Resource Amplifier',
+    tier: 'Support',
+    color: '#FF8C00',
+    accentColor: '#FFFF00',
+    baseCost: 350,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    dropRateBuffPct: 0.25, // +25% Bits/Shards drop rate in range
+    unlockWave: 8,
+    size: 32,
+  },
+
+  // Legacy Aliases for backward compatibility
+  data_miner: {
+    id: 'data_miner',
+    name: 'Data Miner',
+    tier: 'Support',
+    color: '#39FF14',
+    accentColor: '#7B2FBE',
+    baseCost: 100,
+    damage: 0,
+    attackSpeed: 0,
+    range: 2.5,
+    targeting: 'none',
+    damageType: 'none',
+    isSupport: true,
+    bitsPerSec: 3.0,
+    baseBitsYield: 5,
+    baseShardYield: 0.5,
+    baseTickInterval: 2.0,
+    unlockWave: 1,
+    size: 32,
+  },
   regex_sniper: {
     id: 'regex_sniper',
     name: 'Regex Sniper',
@@ -854,17 +1235,16 @@ const TOWER_DEFS = {
     accentColor: '#FF0000',
     baseCost: 400,
     damage: 150,
-    attackSpeed: 0.2,   // shots per second
-    range: 8,           // tiles (longest range)
+    attackSpeed: 0.2,
+    range: 8,
     targeting: 'boss_priority',
     damageType: 'kinetic',
-    critChance: 0.20,   // 20% Critical Parse
+    critChance: 0.20,
     critMult: 2.0,
     specialEffect: 'critical_parse',
     unlockWave: 7,
     size: 32,
   },
-  // === Tower 5: Garbage Collector (GDD section 4a – Legendary) ===
   garbage_collector: {
     id: 'garbage_collector',
     name: 'Garbage Collector',
@@ -873,19 +1253,18 @@ const TOWER_DEFS = {
     accentColor: '#FF00FF',
     baseCost: 800,
     damage: 45,
-    attackSpeed: 0.5,   // pulses per second
+    attackSpeed: 0.5,
     range: 4,
     targeting: 'nearest',
     damageType: 'aoe',
-    aoeRadius: 2,       // tiles
-    slowFactor: 0.5,    // 50% slow
-    slowDuration: 2.0,  // seconds
-    killBonusBits: 2,   // bonus bits for kills inside AoE during pulse
+    aoeRadius: 2,
+    slowFactor: 0.5,
+    slowDuration: 2.0,
+    killBonusBits: 2,
     specialEffect: 'aoe_slow',
     unlockWave: 10,
     size: 32,
   },
-  // === Tower 6: Null Pointer Probe (GDD section 4a – Epic, Queen-exclusive) ===
   null_pointer_probe: {
     id: 'null_pointer_probe',
     name: 'Null Pointer Probe',
@@ -897,115 +1276,534 @@ const TOWER_DEFS = {
     attackSpeed: 0.6,
     range: 5,
     targeting: 'nearest',
-    damageType: 'true',  // ignores armor
+    damageType: 'true',
     specialEffect: 'null_lock',
-    requiresQueen: true, // purchased via Crypto Shard
-    nullLockDuration: 1.5, // seconds enemy is locked/nulled
+    requiresQueen: true,
+    nullLockDuration: 1.5,
     unlockWave: 8,
     size: 32,
-    // Economy cost: Crypto Shard, not Data Bits
     cryptoCost: 30,
-  },
-  // --- Data Miner (GDD v1.1 Economy Unit) ---
-  // Task: Data Miner -- non-attacking support tower yang menghasilkan Data Bits
-  // dan Crypto Shard secara periodik. Tidak punya damage/attackSpeed/range,
-  // sehingga field tersebut di-set 0/null agar Tower constructor tidak crash.
-  //
-  // Yield scaling formula (level 1-10):
-  //   bitsYield(level)  = 5  * Math.pow(1.4, level - 1)
-  //   shardYield(level) = 0.5 * Math.pow(1.3, level - 1)
-  //   upgradeCost(level) = 100 * Math.pow(1.65, level - 1)  [sama dengan towerUpgradeCost]
-  //
-  // Base tick interval: 2.0 detik.
-  // Queen Overclock Foundry mengubah effective interval dengan rumus:
-  //   speedMult          = 1 + (0.05 * queenLevel)
-  //   effectiveInterval  = BASE_TICK_INTERVAL / speedMult
-  data_miner: {
-    id: 'data_miner',
-    name: 'Data Miner',
-    tier: 'Economy',
-    color: '#39FF14',          // Digital Green -- identik dengan warna Data Bits HUD
-    accentColor: '#7B2FBE',    // Deep Purple -- hint Crypto Shard yang juga dihasilkan
-    baseCost: 100,
-    // Stat serangan: tidak ada. Di-set falsy agar Tower._findTarget() tetap aman.
-    damage: 0,
-    attackSpeed: 0,
-    range: 0,
-    targeting: 'none',
-    damageType: 'none',
-    specialEffect: null,
-    unlockWave: 1,
-    size: 32,
-    // Economy-specific
-    baseBitsYield:  5,    // bits per tick
-    baseShardYield: 0.5,  // shards per tick
-    baseTickInterval: 2.0, // detik
   },
 };
 
-// === HERO DEFINITIONS (GDD section 2 & 3) ===
-// REFINEMENT 2 (constants.js HERO_DEFS upgradeCosts): satuan biaya upgrade
-// diubah dari Data Bits ke Crypto Shard. Crypto Shard jauh lebih langka
-// (Queen Lv1 ~0.8/dtk, max cap 100*level), sehingga skala diturunkan ~1/10
-// dari angka GDD asli. Angka lama tercatat di komentar untuk referensi.
+// Helper to generate smooth hero upgrade costs in Crypto Shards from Lv 1 to 50
+function _generateHeroCosts(baseCost) {
+  const costs = [0];
+  for (let lvl = 1; lvl < 50; lvl++) {
+    // Breakpoints at 10, 20, 30, 40, 45, 50
+    costs.push(Math.max(5, Math.round(baseCost * Math.pow(1.075, lvl - 1))));
+  }
+  return costs;
+}
+
+// === HERO DEFINITIONS (Section 1: 10 Cyber-Mech Heroes, Lv 1-50 progression) ===
 const HERO_DEFS = {
+  // 1. RONIN UNIT
+  ronin: {
+    id: 'ronin',
+    name: 'Ronin Unit',
+    subtitle: 'Cybernetic Katana Master',
+    role: 'Melee / High Speed / Very High Power',
+    color: '#C21807',
+    accentColor: '#1F6FFF',
+    trimColor: '#00FFFF',
+    baseHp: 280,
+    baseArmor: 15,
+    baseDamage: 45,
+    speed: 1.8,
+    attackCooldown: 0.8,
+    upgradeCosts: _generateHeroCosts(15),
+    skill: {
+      id: 'zanshin_slash',
+      name: 'Zanshin Slash',
+      cd: 4.0,
+      hits: 3,
+      dmgPerHit: 45,
+      critBonus: 0.15,
+      dashTiles: 1.5,
+    },
+  },
+  // 2. VALKYRIE MK.V
+  valkyrie: {
+    id: 'valkyrie',
+    name: 'Valkyrie Mk.V',
+    subtitle: 'Aerial Radiant Striker',
+    role: 'Ranged/Aerial / Very High Speed / High Power',
+    color: '#EDEDED',
+    accentColor: '#4CFFE0',
+    trimColor: '#1E90FF',
+    baseHp: 220,
+    baseArmor: 10,
+    baseDamage: 38,
+    speed: 2.2,
+    attackCooldown: 0.9,
+    upgradeCosts: _generateHeroCosts(16),
+    skill: {
+      id: 'photon_dive',
+      name: 'Photon Dive',
+      cd: 5.0,
+      dmg: 60,
+      radius: 1.2,
+      silenceDuration: 1.0,
+    },
+  },
+  // 3. HEAVY BREAKER
+  heavy_breaker: {
+    id: 'heavy_breaker',
+    name: 'Heavy Breaker',
+    subtitle: 'Industrial Demolisher',
+    role: 'Melee Tank / Low Speed / Very High Defense',
+    color: '#FF8A00',
+    accentColor: '#333333',
+    trimColor: '#FFD700',
+    baseHp: 400,
+    baseArmor: 25,
+    baseDamage: 50,
+    speed: 0.9,
+    attackCooldown: 1.5,
+    upgradeCosts: _generateHeroCosts(18),
+    skill: {
+      id: 'groundbreaker_slam',
+      name: 'Groundbreaker Slam',
+      cd: 8.0,
+      dmg: 90,
+      radius: 1.5,
+      stunDuration: 1.0,
+    },
+  },
+  // 4. CYBER-SPIDER
+  cyber_spider: {
+    id: 'cyber_spider',
+    name: 'Cyber-Spider',
+    subtitle: 'Neural Disruptor',
+    role: 'Ranged/Debuff / Medium Speed / Medium Power',
+    color: '#B300FF',
+    accentColor: '#FF69B4',
+    trimColor: '#111111',
+    baseHp: 240,
+    baseArmor: 12,
+    baseDamage: 28,
+    speed: 1.4,
+    attackCooldown: 1.1,
+    upgradeCosts: _generateHeroCosts(15),
+    skill: {
+      id: 'corrupt_thread',
+      name: 'Corrupt Thread',
+      cd: 6.0,
+      slow: 0.25,
+      armorStrip: 0.20,
+      duration: 3.0,
+    },
+  },
+  // 5. NINJA ASSASSIN
+  ninja_assassin: {
+    id: 'ninja_assassin',
+    name: 'Ninja Assassin',
+    subtitle: 'Ghost Protocol Infiltrator',
+    role: 'Melee Burst/Stealth / Very High Speed / High Power',
+    color: '#0F4C2E',
+    accentColor: '#39FF14',
+    trimColor: '#FFFFFF',
+    baseHp: 200,
+    baseArmor: 8,
+    baseDamage: 55,
+    speed: 2.4,
+    attackCooldown: 0.7,
+    upgradeCosts: _generateHeroCosts(18),
+    skill: {
+      id: 'ghost_protocol',
+      name: 'Ghost Protocol',
+      cd: 7.0,
+      invisDuration: 1.5,
+      bonusDmgMult: 2.5,
+    },
+  },
+  // 6. BEAM CANNONEER
+  beam_cannoneer: {
+    id: 'beam_cannoneer',
+    name: 'Beam Cannoneer',
+    subtitle: 'High-Output Artillery',
+    role: 'Ranged Heavy / Low Speed / High Power',
+    color: '#0B3D91',
+    accentColor: '#FFD500',
+    trimColor: '#00FFFF',
+    baseHp: 260,
+    baseArmor: 14,
+    baseDamage: 40,
+    speed: 1.0,
+    attackCooldown: 1.6,
+    upgradeCosts: _generateHeroCosts(17),
+    skill: {
+      id: 'overcharge_beam',
+      name: 'Overcharge Beam',
+      cd: 6.0,
+      dmg: 70,
+      maxPierce: 3,
+      chargeTime: 1.0,
+    },
+  },
+  // 7. ENGINEER BOT
+  engineer_bot: {
+    id: 'engineer_bot',
+    name: 'Engineer Bot',
+    subtitle: 'Autonomous Mechanist',
+    role: 'Utility/Support Deploy / Medium Speed / Low Power',
+    color: '#8B5A2B',
+    accentColor: '#FFA500',
+    trimColor: '#00FFFF',
+    baseHp: 250,
+    baseArmor: 16,
+    baseDamage: 22,
+    speed: 1.3,
+    attackCooldown: 1.3,
+    upgradeCosts: _generateHeroCosts(14),
+    skill: {
+      id: 'field_repair',
+      name: 'Field Repair',
+      cd: 10.0,
+      healPctPerSec: 0.08,
+      duration: 4.0,
+      radius: 2.0,
+    },
+  },
+  // 8. MEDIC MECH
+  medic_mech: {
+    id: 'medic_mech',
+    name: 'Medic Mech',
+    subtitle: 'Nano Reconstructor',
+    role: 'Support Heal / Medium Speed / Low Power',
+    color: '#FFD6E8',
+    accentColor: '#FF1F4B',
+    trimColor: '#FFFFFF',
+    baseHp: 210,
+    baseArmor: 10,
+    baseDamage: 20,
+    speed: 1.5,
+    attackCooldown: 1.2,
+    upgradeCosts: _generateHeroCosts(15),
+    skill: {
+      id: 'nano_infusion',
+      name: 'Nano Infusion',
+      cd: 9.0,
+      instantHeal: 60,
+      regenPerSec: 5,
+      regenDuration: 5.0,
+    },
+  },
+  // 9. STEALTH OPERATIVE
+  stealth_operative: {
+    id: 'stealth_operative',
+    name: 'Stealth Operative',
+    subtitle: 'Blackout Shadow',
+    role: 'Melee/Infiltrator / High Speed / Medium Power',
+    color: '#1C1C1C',
+    accentColor: '#5B2C91',
+    trimColor: '#9933FF',
+    baseHp: 220,
+    baseArmor: 10,
+    baseDamage: 42,
+    speed: 2.0,
+    attackCooldown: 0.85,
+    upgradeCosts: _generateHeroCosts(16),
+    skill: {
+      id: 'blackout_cloak',
+      name: 'Blackout Cloak',
+      cd: 8.0,
+      invisDuration: 3.0,
+      exitBonusDmg: 0.50,
+    },
+  },
+  // 10. AEGIS GUARD
+  aegis_guard: {
+    id: 'aegis_guard',
+    name: 'Aegis Guard',
+    subtitle: 'Fortress Bastion',
+    role: 'Tank/Protector / Low Speed / Very High Defense',
+    color: '#F4D35E',
+    accentColor: '#2A4BA0',
+    trimColor: '#FFFFFF',
+    baseHp: 380,
+    baseArmor: 30,
+    baseDamage: 32,
+    speed: 1.1,
+    attackCooldown: 1.4,
+    upgradeCosts: _generateHeroCosts(18),
+    skill: {
+      id: 'bastion_wall',
+      name: 'Bastion Wall',
+      cd: 10.0,
+      shieldAmount: 100,
+      duration: 5.0,
+    },
+  },
+
+  // Backward compatibility aliases
   king: {
     id: 'king',
     name: 'KING',
-    subtitle: 'The Architect',
+    subtitle: 'The Architect (Aegis Guard)',
+    role: 'Tank/Protector / Support',
     color: COLORS.NEON_CYAN,
-    baseHp: 80,
-    baseArmor: 5,
-    // Upgrade costs dalam Crypto Shard (lama Data Bits: 150,280,450,680,980,1380,1900,2580,3450)
-    upgradeCosts: [0, 15, 28, 45, 68, 98, 138, 190, 258, 345],
-    // Aura buff formula: GDD 3a
-    // damageMult = 1 + (0.10 * level)
-    // speedMult  = 1 + (0.05 * level)
-    // rangeMult  = 1 + (0.04 * level)
-    // auraRadius = 3 + floor(level / 3)
+    accentColor: '#2A4BA0',
+    baseHp: 280,
+    baseArmor: 20,
+    baseDamage: 30,
+    speed: 1.2,
+    attackCooldown: 1.2,
+    upgradeCosts: _generateHeroCosts(15),
+    skill: {
+      id: 'bastion_wall',
+      name: 'Bastion Wall',
+      cd: 10.0,
+      shieldAmount: 100,
+      duration: 5.0,
+    },
   },
   knight: {
     id: 'knight',
     name: 'KNIGHT',
-    subtitle: 'The Breaker',
+    subtitle: 'The Breaker (Ronin Unit)',
+    role: 'Melee / High Speed / Very High Power',
     color: COLORS.NEON_RED,
-    // HP formula: 250 + (75 * level)
-    // Damage formula: 35 + (12 * level)
-    // Armor formula: 15 + (5 * level)
-    attackCooldown: 1.2, // detik
-    healPassive: 2,      // HP per detik saat tidak combat
-    respawnTime: 15,     // detik
-    // Upgrade costs dalam Crypto Shard (lama Data Bits: 200,380,600,880,1220,1640,2140,2720,3400)
-    upgradeCosts: [0, 20, 38, 60, 88, 122, 164, 214, 272, 340],
+    accentColor: '#1F6FFF',
+    baseHp: 280,
+    baseArmor: 15,
+    baseDamage: 45,
+    speed: 1.8,
+    attackCooldown: 0.8,
+    upgradeCosts: _generateHeroCosts(16),
+    skill: {
+      id: 'zanshin_slash',
+      name: 'Zanshin Slash',
+      cd: 4.0,
+      hits: 3,
+      dmgPerHit: 45,
+      critBonus: 0.15,
+      dashTiles: 1.5,
+    },
   },
   queen: {
     id: 'queen',
     name: 'QUEEN',
-    subtitle: 'The Foundry',
+    subtitle: 'The Foundry (Valkyrie Mk.V)',
+    role: 'Ranged/Aerial / High Power',
     color: COLORS.DEEP_PURPLE,
-    baseHp: 120,
-    baseArmor: 8,
-    // Shard formula: 0.5 + (0.3 * level) per detik
-    // maxShard: 100 * level
-    // Upgrade costs dalam Crypto Shard (lama Data Bits: 180,340,540,790,1100,1480,1940,2480,3100)
-    upgradeCosts: [0, 18, 34, 54, 79, 110, 148, 194, 248, 310],
+    accentColor: '#4CFFE0',
+    baseHp: 220,
+    baseArmor: 10,
+    baseDamage: 38,
+    speed: 2.2,
+    attackCooldown: 0.9,
+    upgradeCosts: _generateHeroCosts(16),
+    skill: {
+      id: 'photon_dive',
+      name: 'Photon Dive',
+      cd: 5.0,
+      dmg: 60,
+      radius: 1.2,
+      silenceDuration: 1.0,
+    },
   },
 };
 
-// === ENEMY DEFINITIONS (GDD section 5) ===
+// === CROSS-UNIT SYNERGIES (Section 4) ===
+const SYNERGY_DEFS = {
+  overcharge_protocol: {
+    id: 'overcharge_protocol',
+    name: 'Overcharge Protocol',
+    color: '#FFD500',
+    units: ['beam_cannoneer', 'overclock_node', 'algorithmic_tesla'],
+    desc: '+25% fire rate to Cannoneer, +20% radius to Tesla',
+  },
+  frozen_grid: {
+    id: 'frozen_grid',
+    name: 'Frozen Grid',
+    color: '#00FFFF',
+    units: ['cache_freeze_array', 'data_jammer', 'cyber_spider'],
+    desc: 'Deep Freeze (-50% enemy speed for 2s in area)',
+  },
+  aegis_network: {
+    id: 'aegis_network',
+    name: 'Aegis Network',
+    color: '#2A4BA0',
+    units: ['aegis_guard', 'shield_generator', 'nano_repair_bay'],
+    desc: 'Auto-generating shield across all towers in merged radius',
+  },
+  ghost_circuit: {
+    id: 'ghost_circuit',
+    name: 'Ghost Circuit',
+    color: '#9933FF',
+    units: ['ninja_assassin', 'stealth_operative'],
+    maxTileDistance: 2.0,
+    desc: '-20% skill CD for stealth units within 2 tiles',
+  },
+  data_rush: {
+    id: 'data_rush',
+    name: 'Data Rush',
+    color: '#39FF14',
+    units: ['data_miner_rig', 'crypto_foundry_aux', 'resource_amplifier'],
+    desc: 'Overflow Yield (+50% total resource yield)',
+  },
+};
+
+// === ENEMY DEFINITIONS (Section 3: Tier 1-3 + 5 Boss Entities) ===
 const ENEMY_DEFS = {
+  // --- TIER 1 ---
+  indentation_bug: {
+    id: 'indentation_bug',
+    name: 'Indentation Bug',
+    hp: 40,
+    speed: 1.1,
+    armor: 0,
+    bounty: 6,
+    coreDamage: 4,
+    color: '#39FF14',
+    size: 16,
+    type: 'basic',
+    tier: 1,
+    special: { type: 'zigzag' },
+  },
+  type_error_fly: {
+    id: 'type_error_fly',
+    name: 'Type Error Fly',
+    hp: 50,
+    speed: 1.3,
+    armor: 0,
+    bounty: 8,
+    coreDamage: 5,
+    color: '#00E5FF',
+    size: 15,
+    type: 'basic',
+    tier: 1,
+    special: { type: 'flying' },
+  },
+  null_pointer: {
+    id: 'null_pointer',
+    name: 'Null Pointer',
+    hp: 35,
+    speed: 1.4,
+    armor: 2,
+    bounty: 7,
+    coreDamage: 4,
+    color: '#FFFFFF',
+    size: 11,
+    type: 'basic',
+    tier: 1,
+    special: { type: 'evasive' },
+  },
+  syntax_glitch: {
+    id: 'syntax_glitch',
+    name: 'Syntax Glitch',
+    hp: 30,
+    speed: 1.2,
+    armor: 0,
+    bounty: 4,
+    coreDamage: 3,
+    color: '#FF3366',
+    size: 13,
+    type: 'basic',
+    tier: 1,
+    special: { type: 'swarm' },
+  },
+  infinite_loop: {
+    id: 'infinite_loop',
+    name: 'Infinite Loop',
+    hp: 75,
+    speed: 0.7,
+    armor: 3,
+    bounty: 10,
+    coreDamage: 6,
+    color: '#FFCC00',
+    size: 17,
+    type: 'basic',
+    tier: 1,
+    special: { type: 'regen', regenRate: 2 },
+  },
   syntax_slime: {
     id: 'syntax_slime',
     name: 'Syntax Slime',
     hp: 60,
-    speed: 0.8,     // tile per detik
+    speed: 0.8,
     armor: 0,
     bounty: 5,
     coreDamage: 5,
     color: COLORS.DIGITAL_GREEN,
     size: 16,
     type: 'basic',
+    tier: 1,
     special: null,
+  },
+
+  // --- TIER 2 ---
+  memory_leak_ooze: {
+    id: 'memory_leak_ooze',
+    name: 'Memory Leak Ooze',
+    hp: 90,
+    speed: 0.6,
+    armor: 4,
+    bounty: 15,
+    coreDamage: 10,
+    color: '#FF8800',
+    size: 18,
+    type: 'basic',
+    tier: 2,
+    special: { type: 'split_on_death' },
+  },
+  undefined_variable: {
+    id: 'undefined_variable',
+    name: 'Undefined Variable',
+    hp: 80,
+    speed: 1.0,
+    armor: 2,
+    bounty: 14,
+    coreDamage: 8,
+    color: '#AAAAFF',
+    size: 16,
+    type: 'basic',
+    tier: 2,
+    special: { type: 'stealth_opacity' },
+  },
+  trojan_downloader: {
+    id: 'trojan_downloader',
+    name: 'Trojan Downloader',
+    hp: 110,
+    speed: 0.75,
+    armor: 8,
+    bounty: 18,
+    coreDamage: 12,
+    color: '#990033',
+    size: 20,
+    type: 'basic',
+    tier: 2,
+    special: { type: 'spawn_on_death' },
+  },
+  ransomware_encryptor: {
+    id: 'ransomware_encryptor',
+    name: 'Ransomware Encryptor',
+    hp: 120,
+    speed: 0.7,
+    armor: 10,
+    bounty: 20,
+    coreDamage: 15,
+    color: '#CC0000',
+    size: 20,
+    type: 'basic',
+    tier: 2,
+    special: { type: 'freeze_tower', interval: 6.0, duration: 2.0 },
+  },
+  adware_spammer: {
+    id: 'adware_spammer',
+    name: 'Adware Spammer',
+    hp: 95,
+    speed: 0.9,
+    armor: 4,
+    bounty: 16,
+    coreDamage: 9,
+    color: '#FF00CC',
+    size: 18,
+    type: 'basic',
+    tier: 2,
+    special: { type: 'accuracy_debuff', radius: 2.0 },
   },
   null_pointer_wraith: {
     id: 'null_pointer_wraith',
@@ -1018,29 +1816,8 @@ const ENEMY_DEFS = {
     color: COLORS.GHOST_WHITE,
     size: 16,
     type: 'basic',
-    // special: setiap 5 detik, invisible 1.5 detik
-    special: {
-      type: 'null_state',
-      interval: 5.0,
-      duration: 1.5,
-    },
-  },
-  memory_leak_ooze: {
-    id: 'memory_leak_ooze',
-    name: 'Memory Leak Ooze',
-    hp: 80,
-    hpGrowth: 15,       // +15 HP setiap 4 detik
-    hpGrowthInterval: 4.0,
-    hpMax: 200,
-    speed: 0.6,
-    armor: 2,
-    bounty: 15,
-    bountyGrowthPerHp: 2, // +2 per 15 HP yang ditambahkan
-    coreDamage: 12,
-    color: COLORS.RUST_ORANGE,
-    size: 16,           // dinamis sampai 24
-    type: 'basic',
-    special: { type: 'memory_leak' },
+    tier: 2,
+    special: { type: 'null_state', interval: 5.0, duration: 1.5 },
   },
   race_condition_twin: {
     id: 'race_condition_twin',
@@ -1050,9 +1827,10 @@ const ENEMY_DEFS = {
     armor: 0,
     bounty: 12,
     coreDamage: 7,
-    color: COLORS.BLUE_TWIN, // atau RED_TWIN untuk twin kedua
+    color: COLORS.BLUE_TWIN,
     size: 16,
     type: 'basic',
+    tier: 2,
     special: { type: 'race_condition', healThreshold: 2.0, healAmount: 0.5 },
   },
   deadlock_golem: {
@@ -1067,12 +1845,8 @@ const ENEMY_DEFS = {
     accentColor: COLORS.NEON_RED,
     size: 24,
     type: 'basic',
-    special: {
-      type: 'deadlock',
-      stopDuration: 3.0,
-      doubleArmor: 40,
-      hpThreshold: 0.2, // tidak mati jika HP > 20% saat deadlock
-    },
+    tier: 2,
+    special: { type: 'deadlock', stopDuration: 3.0, doubleArmor: 40, hpThreshold: 0.2 },
   },
   ghost_404: {
     id: 'ghost_404',
@@ -1085,12 +1859,197 @@ const ENEMY_DEFS = {
     color: COLORS.GHOST_PURPLE,
     size: 16,
     type: 'basic',
+    tier: 2,
+    special: { type: 'blink', interval: 6.0, blinkTiles: [1, 2] },
+  },
+
+  // --- TIER 3 ---
+  ddos_flooder: {
+    id: 'ddos_flooder',
+    name: 'DDoS Flooder',
+    hp: 200,
+    speed: 0.65,
+    armor: 15,
+    bounty: 25,
+    coreDamage: 18,
+    color: '#0055FF',
+    size: 22,
+    type: 'basic',
+    tier: 3,
+    special: { type: 'initial_shield', shieldPct: 0.3 },
+  },
+  rootkit_infiltrator: {
+    id: 'rootkit_infiltrator',
+    name: 'Rootkit Infiltrator',
+    hp: 160,
+    speed: 1.1,
+    armor: 6,
+    bounty: 22,
+    coreDamage: 14,
+    color: '#330066',
+    size: 18,
+    type: 'basic',
+    tier: 3,
+    special: { type: 'infiltrator' },
+  },
+  polymorphic_worm: {
+    id: 'polymorphic_worm',
+    name: 'Polymorphic Worm',
+    hp: 180,
+    speed: 0.7,
+    armor: 12,
+    bounty: 24,
+    coreDamage: 16,
+    color: '#00FF99',
+    size: 20,
+    type: 'basic',
+    tier: 3,
+    special: { type: 'element_shift', interval: 5.0 },
+  },
+  zero_day_exploit: {
+    id: 'zero_day_exploit',
+    name: 'Zero-Day Exploit',
+    hp: 140,
+    speed: 1.35,
+    armor: 5,
+    bounty: 30,
+    coreDamage: 40,
+    color: '#FF0033',
+    size: 19,
+    type: 'basic',
+    tier: 3,
+    special: { type: 'core_burst' },
+  },
+  spyware_crawler: {
+    id: 'spyware_crawler',
+    name: 'Spyware Crawler',
+    hp: 150,
+    speed: 0.95,
+    armor: 8,
+    bounty: 20,
+    coreDamage: 12,
+    color: '#708090',
+    size: 18,
+    type: 'basic',
+    tier: 3,
+    special: { type: 'steal_bits' },
+  },
+
+  // --- 5 BOSS ENTITIES (Section 3) ---
+  // Boss 1: Kernel Panic Colossus (Wave 10 Sector Boss)
+  kernel_panic_colossus: {
+    id: 'kernel_panic_colossus',
+    name: 'Kernel Panic Colossus',
+    hp: 3000,
+    speed: 0.45,
+    armor: 25,
+    bounty: 200,
+    bountyShards: 50,
+    coreDamage: 100,
+    color: '#D8232A',
+    accentColor: '#FF0033',
+    size: 48,
+    type: 'boss',
+    bossWave: 10,
     special: {
-      type: 'blink',
-      interval: 6.0,
-      blinkTiles: [1, 2], // range blink tile ke depan
+      type: 'kernel_panic_laser',
+      interval: 8.0,
+      damage: 150,
+      disableDuration: 3.0,
     },
   },
+  // Boss 2: Blue Screen Overlord (Wave 30 Sector Boss)
+  blue_screen_overlord: {
+    id: 'blue_screen_overlord',
+    name: 'Blue Screen Overlord',
+    hp: 6500,
+    speed: 0.40,
+    armor: 35,
+    bounty: 350,
+    bountyShards: 80,
+    coreDamage: 100,
+    color: '#1E90FF',
+    accentColor: '#FFFFFF',
+    size: 52,
+    type: 'boss',
+    bossWave: 30,
+    special: {
+      type: 'bsod_shockwave',
+      interval: 12.0,
+      stunDuration: 2.0,
+    },
+  },
+  // Boss 3: Logic Bomb Devastator (Wave 50 Sector Boss)
+  logic_bomb_devastator: {
+    id: 'logic_bomb_devastator',
+    name: 'Logic Bomb Devastator',
+    hp: 9500,
+    speed: 0.38,
+    armor: 40,
+    bounty: 500,
+    bountyShards: 120,
+    coreDamage: 100,
+    color: '#FF6A00',
+    accentColor: '#333333',
+    size: 54,
+    type: 'boss',
+    bossWave: 50,
+    special: {
+      type: 'logic_bombs',
+      interval: 14.0,
+      bombHp: 100,
+      fuse: 5.0,
+      explodeCoreDmg: 300,
+    },
+  },
+  // Boss 4: Data Corruptor Prime (Wave 70 Sector Boss)
+  data_corruptor_prime: {
+    id: 'data_corruptor_prime',
+    name: 'Data Corruptor Prime',
+    hp: 12000,
+    speed: 0.35,
+    armor: 45,
+    bounty: 700,
+    bountyShards: 160,
+    coreDamage: 100,
+    color: '#4B0082',
+    accentColor: '#BA55D3',
+    size: 56,
+    type: 'boss',
+    bossWave: 70,
+    special: {
+      type: 'corruption_aura',
+      radius: 4.0,
+      drainBitsPerSec: 5,
+      reverseBuffs: true,
+    },
+  },
+  // Boss 5: Fatal Exception Overlord (Wave 100 Final Nemesis)
+  fatal_exception_overlord: {
+    id: 'fatal_exception_overlord',
+    name: 'Fatal Exception Overlord',
+    hp: 15000,
+    speed: 0.32,
+    armor: 50,
+    bounty: 1000,
+    bountyShards: 300,
+    coreDamage: 100,
+    color: '#E0FFFF',
+    accentColor: '#FF0033',
+    size: 60,
+    type: 'boss',
+    bossWave: 100,
+    special: {
+      type: 'fatal_exception',
+      tentacleInterval: 3.0,
+      tentacleDmg: 80,
+      tentacleRadius: 2.0,
+      crtDistortion: true,
+      spawnMalwareInterval: 10.0,
+    },
+  },
+
+  // Legacy Boss support
   stack_overflow_titan: {
     id: 'stack_overflow_titan',
     name: 'Stack Overflow Titan',
@@ -1104,9 +2063,9 @@ const ENEMY_DEFS = {
     size: 48,
     type: 'boss',
     phases: [
-      { threshold: 0.60, action: 'normal'       },
-      { threshold: 0.30, action: 'stack_push'   },  // spawn 3 slime setiap 8 detik
-      { threshold: 0.00, action: 'overflow_burst' }, // speed x2, armor->10
+      { threshold: 0.60, action: 'normal' },
+      { threshold: 0.30, action: 'stack_push' },
+      { threshold: 0.00, action: 'overflow_burst' },
     ],
     spawnInterval: 8.0,
     spawnCount: 3,

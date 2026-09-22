@@ -109,10 +109,18 @@ function gameLoop(timestamp) {
   const dt = rawDt * gameSpeedMult;
 
   if (!gameState.isPaused) {
-    update(dt);
+    try {
+      update(dt);
+    } catch (updateErr) {
+      console.error('Error in game update(dt):', updateErr);
+    }
   }
 
-  renderFrame(gameState);
+  try {
+    renderFrame(gameState);
+  } catch (renderErr) {
+    console.error('Error in renderFrame:', renderErr);
+  }
 
   requestAnimationFrame(gameLoop);
 }
@@ -359,9 +367,10 @@ function setupInputHandlers() {
     }
   });
 
-  // Escape key: cancel placement mode
+  // Escape key: cancel placement mode or close shop modal
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (typeof closeHeroShopModal === 'function') closeHeroShopModal();
       cancelPlacementMode();
       closeTowerPopup();
     }

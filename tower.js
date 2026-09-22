@@ -88,6 +88,13 @@ class Tower {
     const p = tileToPixel(col, row);
     this.x = p.x;
     this.y = p.y;
+    this.footprint = 1; // 1 = 1x1, 2 = 2x2
+    this.occupiedTiles = [{ col, row }];
+
+    // Support Unit Attributes
+    this.isSupport = !!def.isSupport;
+    this.supportTickTimer = 0;
+    this.shieldHp = 0;
 
     // Visual
     this.shootFlash = 0; // timer flash saat menembak
@@ -123,6 +130,7 @@ class Tower {
   /**
    * Upgrade tower ke level berikutnya.
    * Data Miner menggunakan rumus yield scaling; tower serang menggunakan stat scaling.
+   * Saat mencapai Lv 30+, tower mengembang ke 2x2 footprint jika tersedia ruang.
    */
   upgrade() {
     const cost = this.nextUpgradeCost;
@@ -135,18 +143,31 @@ class Tower {
       spawnLevelUpEffect(this);
     }
 
+    // SECTION 2: 2x2 Expansion Logic at Lv. 30+
+    if (this.level >= 30 && this.footprint < 2) {
+      if (typeof expandTowerTo2x2 === 'function') {
+        const expanded = expandTowerTo2x2(this);
+        if (expanded && typeof spawnExpansionEffect === 'function') {
+          spawnExpansionEffect(this);
+        }
+      }
+    }
+
     if (this.isMiner) {
-      // Task (tower.js upgrade): Data Miner -- skala yield dengan rumus GDD v1.1.
       const def = TOWER_DEFS[this.defId];
-      this.bitsYield  = def.baseBitsYield  * Math.pow(1.4, this.level - 1);
-      this.shardYield = def.baseShardYield * Math.pow(1.3, this.level - 1);
-      // effectiveTickInterval sudah di-set oleh applyOverclockFoundry;
-      // tidak perlu diubah di sini karena Queen level bisa berubah kapanpun.
+      this.bitsYield  = (def.baseBitsYield || 5)  * Math.pow(1.4, this.level - 1);
+      this.shardYield = (def.baseShardYield || 0.5) * Math.pow(1.3, this.level - 1);
     } else {
-      // Tingkatkan stat: damage +15%, range +5% per level
-      this.damage = Math.round(TOWER_DEFS[this.defId].damage * (1 + 0.15 * (this.level - 1)));
-      this.range = TOWER_DEFS[this.defId].range * (1 + 0.05 * (this.level - 1));
-      this.attackSpeed = TOWER_DEFS[this.defId].attackSpeed * (1 + 0.05 * (this.level - 1));
+      // Base stat scaling: damage +15%, range +4%, attackSpeed +4%
+      const def = TOWER_DEFS[this.defId] || {};
+      const baseDmg = def.damage || 10;
+      const baseRange = def.range || 3;
+      const baseSpd = def.attackSpeed || 1.0;
+      const footprintBonus = (this.footprint === 2) ? 1.35 : 1.0; // +35% bonus for 2x2 chassis
+
+      this.damage = Math.round(baseDmg * (1 + 0.15 * (this.level - 1)) * footprintBonus);
+      this.range = (baseRange * (1 + 0.04 * (this.level - 1))) * ((this.footprint === 2) ? 1.2 : 1.0);
+      this.attackSpeed = baseSpd * (1 + 0.03 * (this.level - 1));
       this.attackCooldown = 1.0 / this.attackSpeed;
     }
 
@@ -156,14 +177,20 @@ class Tower {
 
   /**
    * Update state tower setiap frame.
-   * Data Miner melewati seluruh logika serangan dan hanya menjalankan tick ekonomi.
+   * Mendukung 15 tower tempur serta 8 support unit.
    * @param {number} dt - Delta time detik
    * @param {Enemy[]} enemies - Semua enemy aktif
    */
   update(dt, enemies) {
-    // === Data Miner: jalur khusus ekonomi, tidak ada serangan ===
+    // === Data Miner: jalur khusus ekonomi ===
     if (this.isMiner) {
       this._updateMinerTick(dt);
+      return;
+    }
+
+    // === Support Units Passive Logic ===
+    if (this.isSupport) {
+      this._updateSupportUnit(dt);
       return;
     }
 
@@ -179,24 +206,55 @@ class Tower {
     // Cooldown timer
     if (this.cooldownTimer > 0) {
       this.cooldownTimer -= dt * this.kingSpeedMult;
-      // REFINEMENT 1 (tower.js Tower.update): _rotateBarrelToward(null, dt)
-      // dihapus dari sini. Laras dibiarkan diam di sudut terakhir saat cooldown.
       return;
     }
 
     // Cari target
     const target = this._findTarget(enemies);
-
-    // REFINEMENT: instant snap -- rotasi dulu di frame ini, baru tembak,
-    // supaya laras sudah menghadap arah yang benar persis saat proyektil keluar.
     this._rotateBarrelToward(target, dt);
 
     if (!target) return;
 
-    // Tembak! (laras sudah snap ke arah target di baris atas)
+    // Tembak!
     this._shoot(target, enemies);
-    this.cooldownTimer = 1.0 / (this.attackSpeed * this.kingSpeedMult);
+    this.cooldownTimer = 1.0 / (this.effectiveAttackSpeed || 1.0);
     this.shootFlash = 0.08;
+  }
+
+  /** Support units passive ticker (8 support models) */
+  _updateSupportUnit(dt) {
+    this.supportTickTimer += dt;
+    if (this.supportTickTimer < 1.0) return;
+    this.supportTickTimer -= 1.0;
+
+    const radiusPx = (this.range || 2.5) * TILE_SIZE;
+
+    // 1. data_miner_rig: generates 3 Bits/sec
+    if (this.defId === 'data_miner_rig') {
+      addDataBits(3 * Math.pow(1.15, this.level - 1));
+    }
+    // 2. crypto_extractor: generates 0.2 Crypto Shards/sec
+    else if (this.defId === 'crypto_extractor') {
+      addCryptoShards(0.2 * Math.pow(1.15, this.level - 1));
+    }
+    // 3. nano_repair_bay / shield_emitter: heals/shields nearby towers and heroes
+    else if (this.defId === 'nano_repair_bay' || this.defId === 'shield_emitter') {
+      towers.forEach(t => {
+        if (t !== this && pixelDist(this.x, this.y, t.x, t.y) <= radiusPx) {
+          t.shieldHp = Math.min(150, (t.shieldHp || 0) + 15);
+        }
+      });
+    }
+    // 4. overclock_pylon / amp_relay / sensor_array: buffs neighboring towers
+    else if (this.defId === 'overclock_pylon' || this.defId === 'amp_relay' || this.defId === 'sensor_array' || this.defId === 'coolant_tower') {
+      towers.forEach(t => {
+        if (t !== this && pixelDist(this.x, this.y, t.x, t.y) <= radiusPx) {
+          if (this.defId === 'overclock_pylon') t.kingSpeedMult = Math.max(t.kingSpeedMult, 1.15);
+          if (this.defId === 'amp_relay') t.kingDamageMult = Math.max(t.kingDamageMult, 1.20);
+          if (this.defId === 'sensor_array') t.kingRangeMult = Math.max(t.kingRangeMult, 1.15);
+        }
+      });
+    }
   }
 
   /**
@@ -402,15 +460,129 @@ class Tower {
       }
     }
 
+    // 4. Cache Freeze Array
+    else if (this.defId === 'cache_freeze_array' || this.specialEffect === 'frost_pulse') {
+      const aoePixels = (this.aoeRadius || 1.8) * TILE_SIZE;
+      allEnemies.forEach(e => {
+        if (!e.isDead && !e.reachedCore && pixelDist(this.x, this.y, e.x, e.y) <= aoePixels) {
+          e.takeDamage(this.effectiveDamage);
+          if (typeof e.applySlow === 'function') e.applySlow(0.30, 2.0);
+        }
+      });
+      if (typeof spawnGarbageCollectorPulse === 'function') {
+        spawnGarbageCollectorPulse(this.x, this.y, aoePixels);
+      }
+    }
+
+    // 5. Compiler Railgun: Linear pierce through all enemies along shot line
+    else if (this.defId === 'compiler_railgun') {
+      const angle = Math.atan2(target.y - this.y, target.x - this.x);
+      const maxDist = this.effectiveRange * TILE_SIZE;
+      allEnemies.forEach(e => {
+        if (!e.isDead && !e.reachedCore) {
+          const d = pixelDist(this.x, this.y, e.x, e.y);
+          if (d <= maxDist) {
+            const enemyAngle = Math.atan2(e.y - this.y, e.x - this.x);
+            const angleDiff = Math.abs(angle - enemyAngle);
+            if (angleDiff < 0.25 || angleDiff > (Math.PI * 2 - 0.25)) {
+              e.takeDamage(this.effectiveDamage);
+            }
+          }
+        }
+      });
+    }
+
+    // 6 & 8. Zero-Day Mortar & Buffer Overflow Mortar: Arc AoE shells
+    else if (this.defId === 'zero_day_mortar' || this.defId === 'buffer_overflow_mortar') {
+      const aoeRadius = (this.aoeRadius || 1.5) * TILE_SIZE;
+      allEnemies.forEach(e => {
+        if (!e.isDead && !e.reachedCore && pixelDist(target.x, target.y, e.x, e.y) <= aoeRadius) {
+          e.takeDamage(this.effectiveDamage);
+          if (this.defId === 'buffer_overflow_mortar') {
+            e.isStunned = true;
+            e.stunTimer = 0.8;
+          }
+        }
+      });
+      if (typeof spawnGarbageCollectorPulse === 'function') {
+        spawnGarbageCollectorPulse(target.x, target.y, aoeRadius);
+      }
+    }
+
+    // 7. Quantum Beam: continuous ramping damage
+    else if (this.defId === 'quantum_beam') {
+      if (!this._beamCharge) this._beamCharge = 0;
+      this._beamCharge = Math.min(32, this._beamCharge + 4);
+      target.takeDamage(this.effectiveDamage + this._beamCharge);
+    }
+
+    // 9 & 15. DDoS Array & Overclock Turret: 3-round burst
+    else if (this.defId === 'ddos_array' || this.defId === 'overclock_turret') {
+      const count = 3;
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => {
+          if (!target.isDead) target.takeDamage(this.effectiveDamage);
+        }, i * 80);
+      }
+    }
+
+    // 10. Syntax Buster: 50% armor penetration
+    else if (this.defId === 'syntax_buster') {
+      const origArmor = target.armor || 0;
+      target.armor = origArmor * 0.50;
+      target.takeDamage(this.effectiveDamage);
+      target.armor = origArmor;
+    }
+
+    // 11. Encryption Node: strips 40% enemy shield
+    else if (this.defId === 'encryption_node') {
+      if (target.shieldHp && target.shieldHp > 0) {
+        target.shieldHp = Math.max(0, target.shieldHp * 0.60);
+      }
+      target.takeDamage(this.effectiveDamage);
+    }
+
+    // 12. Algorithmic Tesla: 360 radial shock hitting all in 2-tile radius
+    else if (this.defId === 'algorithmic_tesla') {
+      const radiusPx = (this.range || 2.0) * TILE_SIZE;
+      allEnemies.forEach(e => {
+        if (!e.isDead && !e.reachedCore && pixelDist(this.x, this.y, e.x, e.y) <= radiusPx) {
+          e.takeDamage(this.effectiveDamage);
+        }
+      });
+      if (typeof spawnGarbageCollectorPulse === 'function') {
+        spawnGarbageCollectorPulse(this.x, this.y, radiusPx);
+      }
+    }
+
+    // 14. Proxy Disrupter: pushes enemy backward on path
+    else if (this.defId === 'proxy_disrupter') {
+      target.takeDamage(this.effectiveDamage);
+      if (target.distanceTraveled !== undefined) {
+        target.distanceTraveled = Math.max(0, target.distanceTraveled - TILE_SIZE);
+      }
+    }
+
     // Buat projectile visual — per-tower unique type
     const projTypeMap = {
-      packet_turret:    'bit_stream',
-      firewall_cannon:  'fireball',
-      logic_gate_array: 'lightning',
-      regex_sniper:     'tracer_laser',
-      garbage_collector:'aoe_pulse',   // handled by spawnGarbageCollectorPulse, no moving proj
-      null_pointer_probe: 'void_orb',
-      data_miner:       'data_stream', // no projectile; just visual tick flash
+      packet_turret:          'bit_stream',
+      firewall_cannon:        'fireball',
+      logic_gate_array:       'lightning',
+      regex_sniper:           'tracer_laser',
+      garbage_collector:      'aoe_pulse',
+      null_pointer_probe:     'void_orb',
+      data_miner:             'data_stream',
+      compiler_railgun:       'tracer_laser',
+      zero_day_mortar:        'fireball',
+      quantum_beam:           'lightning',
+      buffer_overflow_mortar: 'fireball',
+      ddos_array:             'bit_stream',
+      syntax_buster:          'tracer_laser',
+      encryption_node:        'void_orb',
+      algorithmic_tesla:      'lightning',
+      subnet_sentry:          'bit_stream',
+      proxy_disrupter:        'void_orb',
+      overclock_turret:       'tracer_laser',
     };
     const projType = projTypeMap[this.defId] || 'generic';
     addProjectile(this.x, this.y, target.x, target.y, this.color, projType);
@@ -472,7 +644,7 @@ function sellTower(tower) {
   const idx = towers.indexOf(tower);
   if (idx === -1) return;
   towers.splice(idx, 1);
-  removeTowerFromGrid(tower.col, tower.row);
+  removeTowerFromGrid(tower.col, tower.row, tower);
   addDataBits(tower.sellValue);
 }
 

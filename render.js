@@ -77,45 +77,101 @@ function getGridOffset() {
 
 // === MAIN RENDER LOOP ===
 function renderFrame(gameState) {
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  try {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // === GDD v1.3: Cyberpunk city background ===
-  drawCyberpunkBackground();
+    // === GDD v1.3: Cyberpunk city background ===
+    try {
+      drawCyberpunkBackground();
+    } catch (e) {
+      console.warn('drawCyberpunkBackground error:', e);
+    }
 
-  const { ox, oy } = getGridOffset();
-  ctx.save();
-  ctx.translate(ox, oy);
+    const { ox, oy } = getGridOffset();
+    ctx.save();
+    ctx.translate(ox, oy);
 
-  drawGrid();
-  drawCyberpunkBuildings();   // GDD v1.3: procedural buildings on non-buildable tiles
-  drawSpawnPortalBoxes();     // Rev 6: dedicated portal tile containers + boss flash
-  drawCoreDestroyedFX();      // Multi-Core Fallback: glitch overlay on destroyed cores
-  drawTowers();
-  drawKingAura();
-  drawKingPulseRings();       // Task 1: ring mengembang King
-  drawEnemies(gameState);
-  drawDamageNumbers();        // Task 6b: float damage numbers + miner yield text
-  drawMinerYieldEffects();    // GDD v1.1: pixel spark burst on production tick
-  drawSlashEffects();         // Task 2: slash Knight
-  drawQueenParticles();       // Task 3: particles Queen
-  drawGcPulseEffects();       // Tower 5: Garbage Collector AoE ring
-  drawLevelUpEffects();       // GDD Visual Upgrade: LVL UP burst + floating text
-  drawHeroes(gameState);
-  drawHeroFloatingHpBars(gameState); // GDD v1.3: floating HP bars above all heroes
-  drawProjectiles();          // Task 5: projectile bergerak (diganti)
-  drawKnightStats(gameState);
+    // Primary Grid rendering with fallback
+    try {
+      drawGrid();
+    } catch (err) {
+      console.error('Error in drawGrid, applying fallback grid:', err);
+      _drawFallbackGrid();
+    }
 
-  ctx.restore();
+    // Step-by-step isolated visual passes
+    try { drawCyberpunkBuildings(); } catch (e) { console.warn('drawCyberpunkBuildings error:', e); }
+    try { drawSpawnPortalBoxes(); } catch (e) { console.warn('drawSpawnPortalBoxes error:', e); }
+    try { drawCoreDestroyedFX(); } catch (e) { console.warn('drawCoreDestroyedFX error:', e); }
+    try {
+      if (typeof drawCrossUnitSynergies === 'function') {
+        drawCrossUnitSynergies(gameState);
+      }
+    } catch (e) {
+      console.warn('drawCrossUnitSynergies error:', e);
+    }
+    try { drawTowers(); } catch (e) { console.warn('drawTowers error:', e); }
+    try { drawKingAura(); } catch (e) { console.warn('drawKingAura error:', e); }
+    try { drawKingPulseRings(); } catch (e) { console.warn('drawKingPulseRings error:', e); }
+    try { drawEnemies(gameState); } catch (e) { console.warn('drawEnemies error:', e); }
+    try { drawDamageNumbers(); } catch (e) { console.warn('drawDamageNumbers error:', e); }
+    try { drawMinerYieldEffects(); } catch (e) { console.warn('drawMinerYieldEffects error:', e); }
+    try { drawSlashEffects(); } catch (e) { console.warn('drawSlashEffects error:', e); }
+    try { drawQueenParticles(); } catch (e) { console.warn('drawQueenParticles error:', e); }
+    try { drawGcPulseEffects(); } catch (e) { console.warn('drawGcPulseEffects error:', e); }
+    try { drawLevelUpEffects(); } catch (e) { console.warn('drawLevelUpEffects error:', e); }
+    try { drawHeroes(gameState); } catch (e) { console.warn('drawHeroes error:', e); }
+    try { drawHeroFloatingHpBars(gameState); } catch (e) { console.warn('drawHeroFloatingHpBars error:', e); }
+    try { drawProjectiles(); } catch (e) { console.warn('drawProjectiles error:', e); }
+    try { drawKnightStats(gameState); } catch (e) { console.warn('drawKnightStats error:', e); }
+
+    ctx.restore();
+  } catch (globalRenderErr) {
+    console.error('Critical renderFrame error:', globalRenderErr);
+    try { ctx.restore(); } catch (_) {}
+  }
 }
 
 // === GRID TILES ===
 function drawGrid() {
+  if (!GRID_LAYOUT || !Array.isArray(GRID_LAYOUT) || !GRID_LAYOUT.length) {
+    _drawFallbackGrid();
+    return;
+  }
   for (let row = 0; row < GRID_ROWS; row++) {
+    if (!GRID_LAYOUT[row]) continue;
     for (let col = 0; col < GRID_COLS; col++) {
       const x = col * TILE_SIZE;
       const y = row * TILE_SIZE;
       const tileType = GRID_LAYOUT[row][col];
-      drawTile(x, y, tileType, col, row);
+      try {
+        drawTile(x, y, tileType, col, row);
+      } catch (tileErr) {
+        // Fallback tile render so map never renders empty/black
+        ctx.fillStyle = (typeof COLORS !== 'undefined' && COLORS.DEEP_BLUE_GRAY) ? COLORS.DEEP_BLUE_GRAY : '#0d1225';
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        ctx.strokeStyle = '#ffffff0a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+      }
+    }
+  }
+}
+
+/** Fallback grid generator ensuring visible map even if layout fails */
+function _drawFallbackGrid() {
+  const s = (typeof TILE_SIZE !== 'undefined') ? TILE_SIZE : 48;
+  const cols = (typeof GRID_COLS !== 'undefined') ? GRID_COLS : 16;
+  const rows = (typeof GRID_ROWS !== 'undefined') ? GRID_ROWS : 10;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = c * s;
+      const y = r * s;
+      ctx.fillStyle = (typeof COLORS !== 'undefined' && COLORS.DEEP_BLUE_GRAY) ? COLORS.DEEP_BLUE_GRAY : '#0d1225';
+      ctx.fillRect(x, y, s, s);
+      ctx.strokeStyle = '#ffffff0a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, s, s);
     }
   }
 }
@@ -142,15 +198,15 @@ function drawTile(x, y, tileType, col, row) {
       ctx.fillStyle = '#1e1e38';
       ctx.fillRect(x + 4, y + 4, s - 8, s - 8);
 
-      if (tileType === TILE.SPAWN) {
-        _drawSpawnPortalTile(x, y, s);
+      if (tileType === TILE.SPAWN && typeof _drawSpawnPortalTile === 'function') {
+        try { _drawSpawnPortalTile(x, y, s); } catch (_) {}
       }
-      if (tileType === TILE.CORE) {
-        _drawCoreTile(x, y, s);
+      if (tileType === TILE.CORE && typeof _drawCoreTile === 'function') {
+        try { _drawCoreTile(x, y, s); } catch (_) {}
       }
 
       // Deadlock tile marker
-      if (isDeadlockTile(col, row)) {
+      if (typeof isDeadlockTile === 'function' && isDeadlockTile(col, row)) {
         ctx.fillStyle = COLORS.NEON_RED;
         ctx.beginPath();
         ctx.moveTo(x + s / 2, y + 6);
@@ -401,13 +457,44 @@ function calcTier(level) {
  * Wraps everything in ctx.save/restore. Does NOT draw CTRL/COMBAT/HP bar overlays.
  */
 function drawHeroShape(ctx2, hero, tier) {
+  if (typeof drawCyberHeroShape === 'function') {
+    try {
+      drawCyberHeroShape(ctx2, hero, tier);
+      return;
+    } catch (err) {
+      console.warn('drawCyberHeroShape failed, falling back to default:', err);
+    }
+  }
   const t = Date.now() / 1000;
   const hx = hero.x;
   const hy = hero.y;
 
-  if (hero.defId === 'knight') _drawKnightTier(ctx2, hx, hy, tier, t);
-  else if (hero.defId === 'king')  _drawKingTier(ctx2, hx, hy, tier, t, hero);
-  else if (hero.defId === 'queen') _drawQueenTier(ctx2, hx, hy, tier, t);
+  try {
+    if ((hero.defId === 'knight' || hero.defId === 'ronin') && typeof _drawKnightTier === 'function') {
+      _drawKnightTier(ctx2, hx, hy, tier, t);
+    } else if ((hero.defId === 'king' || hero.defId === 'aegis_guard') && typeof _drawKingTier === 'function') {
+      _drawKingTier(ctx2, hx, hy, tier, t, hero);
+    } else if ((hero.defId === 'queen' || hero.defId === 'valkyrie') && typeof _drawQueenTier === 'function') {
+      _drawQueenTier(ctx2, hx, hy, tier, t);
+    } else {
+      _drawDefaultHeroShapeFallback(ctx2, hero);
+    }
+  } catch (err) {
+    console.warn('Standard hero render failed, applying basic shape:', err);
+    _drawDefaultHeroShapeFallback(ctx2, hero);
+  }
+}
+
+function _drawDefaultHeroShapeFallback(ctx2, hero) {
+  ctx2.save();
+  ctx2.fillStyle = hero.color || '#00FFFF';
+  ctx2.beginPath();
+  ctx2.arc(hero.x, hero.y, 12, 0, Math.PI * 2);
+  ctx2.fill();
+  ctx2.strokeStyle = '#FFFFFF';
+  ctx2.lineWidth = 1.5;
+  ctx2.stroke();
+  ctx2.restore();
 }
 
 // =============================================================
@@ -1298,20 +1385,51 @@ function _drawQueenTier(c, hx, hy, tier, t) {
  * TODO: replace with ctx.drawImage(sprites[tower.defId + '_t' + tier], ...).
  */
 function drawTowerShape(ctx2, tower, tier) {
-  if (tower.defId === 'packet_turret')         _drawPacketTurretTier(ctx2, tower, tier);
-  else if (tower.defId === 'firewall_cannon')  _drawFirewallCannonTier(ctx2, tower, tier);
-  else if (tower.defId === 'logic_gate_array') _drawLogicGateArrayTier(ctx2, tower, tier);
-  else if (tower.defId === 'data_miner')       _drawDataMinerTier(ctx2, tower, tier);
-  else if (tower.defId === 'regex_sniper')     _drawRegexSniperTier(ctx2, tower, tier);
-  else if (tower.defId === 'garbage_collector') _drawGarbageCollectorTier(ctx2, tower, tier);
-  else if (tower.defId === 'null_pointer_probe') _drawNullPointerProbeTier(ctx2, tower, tier);
-  else {
-    // Fallback for any future tower without a tier renderer
-    const bx = tower.col * TILE_SIZE + (TILE_SIZE - tower.size) / 2;
-    const by = tower.row * TILE_SIZE + (TILE_SIZE - tower.size) / 2;
-    ctx2.fillStyle = tower.color;
-    ctx2.fillRect(bx, by, tower.size, tower.size);
+  if (typeof drawCyberTowerShape === 'function') {
+    try {
+      drawCyberTowerShape(ctx2, tower, tier);
+      return;
+    } catch (err) {
+      console.warn('drawCyberTowerShape failed, falling back to default:', err);
+    }
   }
+
+  try {
+    if (tower.defId === 'packet_turret' && typeof _drawPacketTurretTier === 'function') {
+      _drawPacketTurretTier(ctx2, tower, tier);
+    } else if (tower.defId === 'firewall_cannon' && typeof _drawFirewallCannonTier === 'function') {
+      _drawFirewallCannonTier(ctx2, tower, tier);
+    } else if (tower.defId === 'logic_gate_array' && typeof _drawLogicGateArrayTier === 'function') {
+      _drawLogicGateArrayTier(ctx2, tower, tier);
+    } else if ((tower.defId === 'data_miner' || tower.defId === 'data_miner_rig') && typeof _drawDataMinerTier === 'function') {
+      _drawDataMinerTier(ctx2, tower, tier);
+    } else if (tower.defId === 'regex_sniper' && typeof _drawRegexSniperTier === 'function') {
+      _drawRegexSniperTier(ctx2, tower, tier);
+    } else if (tower.defId === 'garbage_collector' && typeof _drawGarbageCollectorTier === 'function') {
+      _drawGarbageCollectorTier(ctx2, tower, tier);
+    } else if (tower.defId === 'null_pointer_probe' && typeof _drawNullPointerProbeTier === 'function') {
+      _drawNullPointerProbeTier(ctx2, tower, tier);
+    } else {
+      _drawFallbackTowerShape(ctx2, tower);
+    }
+  } catch (err) {
+    console.warn('Standard tower render failed, applying basic shape:', err);
+    _drawFallbackTowerShape(ctx2, tower);
+  }
+}
+
+function _drawFallbackTowerShape(ctx2, tower) {
+  const is2x2 = (tower.footprint === 2) || (tower.level >= 30);
+  const renderSize = is2x2 ? TILE_SIZE * 2 : (tower.size || TILE_SIZE);
+  const bx = is2x2 ? (tower.col * TILE_SIZE) : (tower.col * TILE_SIZE + (TILE_SIZE - renderSize) / 2);
+  const by = is2x2 ? (tower.row * TILE_SIZE) : (tower.row * TILE_SIZE + (TILE_SIZE - renderSize) / 2);
+  ctx2.save();
+  ctx2.fillStyle = tower.color || '#00FFFF';
+  ctx2.fillRect(bx, by, renderSize, renderSize);
+  ctx2.strokeStyle = '#FFFFFF88';
+  ctx2.lineWidth = 1;
+  ctx2.strokeRect(bx, by, renderSize, renderSize);
+  ctx2.restore();
 }
 
 // =============================================================
@@ -3093,16 +3211,18 @@ function drawTowers() {
  * TODO: ganti ctx.drawImage(sprites[entity.defId], ...) untuk sprite asli.
  */
 function drawSingleTower(tower) {
+  const is2x2 = (tower.footprint === 2) || (tower.level >= 30);
   const x = tower.col * TILE_SIZE;
   const y = tower.row * TILE_SIZE;
-  const bx = x + (TILE_SIZE - tower.size) / 2;
-  const by = y + (TILE_SIZE - tower.size) / 2;
+  const renderSize = is2x2 ? TILE_SIZE * 2 : tower.size;
+  const bx = is2x2 ? x : (x + (TILE_SIZE - tower.size) / 2);
+  const by = is2x2 ? y : (y + (TILE_SIZE - tower.size) / 2);
   const tier = calcTier(tower.level);
 
   // Frozen overlay (always drawn first, before tier shape)
   if (tower.isFrozen) {
     ctx.fillStyle = '#aaddff88';
-    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+    ctx.fillRect(x, y, is2x2 ? TILE_SIZE * 2 : TILE_SIZE, is2x2 ? TILE_SIZE * 2 : TILE_SIZE);
   }
 
   // Tier-progressive body + barrel via helper (replaces old flat rect + single barrel)
@@ -3112,27 +3232,27 @@ function drawSingleTower(tower) {
   if (tower.isBuffedByKing) {
     ctx.strokeStyle = COLORS.NEON_CYAN + '99';
     ctx.lineWidth = 2;
-    ctx.strokeRect(bx - 2, by - 2, tower.size + 4, tower.size + 4);
+    ctx.strokeRect(bx - 2, by - 2, renderSize + 4, renderSize + 4);
 
     // Partikel "+" melayang (berkedip setiap detik)
     const t = Date.now() / 1000;
     const floatY = -((t * 20) % 20);
     ctx.fillStyle = COLORS.NEON_CYAN;
     ctx.font = '8px monospace';
-    ctx.fillText('+', bx + tower.size / 2 - 3, by + floatY + 10);
+    ctx.fillText('+', bx + renderSize / 2 - 3, by + floatY + 10);
   }
 
   // Shoot flash
   if (tower.shootFlash > 0) {
     ctx.fillStyle = '#ffffff44';
-    ctx.fillRect(bx, by, tower.size, tower.size);
+    ctx.fillRect(bx, by, renderSize, renderSize);
   }
 
   // Level badge
   if (tower.level > 1) {
     ctx.fillStyle = COLORS.ELECTRIC_YELLOW;
     ctx.font = 'bold 8px monospace';
-    ctx.fillText(`L${tower.level}`, bx + 2, by + tower.size - 2);
+    ctx.fillText(`L${tower.level}`, bx + 2, by + renderSize - 2);
   }
 }
 
@@ -3651,29 +3771,42 @@ function drawSingleEnemy(enemy) {
   ctx.globalAlpha = enemy.opacity;
 
   // Dispatch to dedicated procedural renderer based on defId / type
-  if (enemy.type === 'boss' || enemy.defId === 'stack_overflow_titan') {
-    _drawStackOverflowTitan(ctx, enemy, cx, cy, vSize, t);
-  } else if (enemy.defId === 'syntax_slime') {
-    _drawSyntaxSlime(ctx, enemy, cx, cy, vSize, t);
-  } else if (enemy.defId === 'null_pointer_wraith') {
-    _drawNullPointerWraith(ctx, enemy, cx, cy, vSize, t);
-  } else if (enemy.defId === 'memory_leak_ooze') {
-    _drawMemoryLeakOoze(ctx, enemy, cx, cy, vSize, t);
-  } else if (enemy.defId === 'race_condition_twin') {
-    _drawRaceConditionTwin(ctx, enemy, cx, cy, vSize, t);
-  } else if (enemy.defId === 'deadlock_golem') {
-    _drawDeadlockGolem(ctx, enemy, cx, cy, vSize, t);
-  } else if (enemy.defId === 'ghost_404') {
-    _drawGhost404(ctx, enemy, cx, cy, vSize, t);
-  } else {
-    // Graceful fallback for any custom enemy
-    ctx.beginPath();
-    ctx.arc(cx, cy, vSize / 2, 0, Math.PI * 2);
-    ctx.fillStyle = enemy.baseColor;
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+  try {
+    if (typeof drawCyberBoss === 'function' && (enemy.type === 'boss' || (enemy.defId && (enemy.defId.includes('colossus') || enemy.defId.includes('overlord') || enemy.defId.includes('devastator') || enemy.defId.includes('prime') || enemy.defId === 'stack_overflow_titan')))) {
+      try {
+        drawCyberBoss(ctx, enemy, cx, cy, vSize, t);
+      } catch (bossErr) {
+        console.warn('drawCyberBoss failed, using fallback:', bossErr);
+        if (typeof _drawStackOverflowTitan === 'function') {
+          _drawStackOverflowTitan(ctx, enemy, cx, cy, vSize, t);
+        } else {
+          _drawFallbackEnemyShape(ctx, enemy, cx, cy, vSize);
+        }
+      }
+    } else if (enemy.type === 'boss' || enemy.defId === 'stack_overflow_titan') {
+      if (typeof _drawStackOverflowTitan === 'function') {
+        _drawStackOverflowTitan(ctx, enemy, cx, cy, vSize, t);
+      } else {
+        _drawFallbackEnemyShape(ctx, enemy, cx, cy, vSize);
+      }
+    } else if (enemy.defId === 'syntax_slime' && typeof _drawSyntaxSlime === 'function') {
+      _drawSyntaxSlime(ctx, enemy, cx, cy, vSize, t);
+    } else if (enemy.defId === 'null_pointer_wraith' && typeof _drawNullPointerWraith === 'function') {
+      _drawNullPointerWraith(ctx, enemy, cx, cy, vSize, t);
+    } else if (enemy.defId === 'memory_leak_ooze' && typeof _drawMemoryLeakOoze === 'function') {
+      _drawMemoryLeakOoze(ctx, enemy, cx, cy, vSize, t);
+    } else if (enemy.defId === 'race_condition_twin' && typeof _drawRaceConditionTwin === 'function') {
+      _drawRaceConditionTwin(ctx, enemy, cx, cy, vSize, t);
+    } else if (enemy.defId === 'deadlock_golem' && typeof _drawDeadlockGolem === 'function') {
+      _drawDeadlockGolem(ctx, enemy, cx, cy, vSize, t);
+    } else if (enemy.defId === 'ghost_404' && typeof _drawGhost404 === 'function') {
+      _drawGhost404(ctx, enemy, cx, cy, vSize, t);
+    } else {
+      _drawFallbackEnemyShape(ctx, enemy, cx, cy, vSize);
+    }
+  } catch (err) {
+    console.warn('Enemy procedural render failed, applying basic circle:', err);
+    _drawFallbackEnemyShape(ctx, enemy, cx, cy, vSize);
   }
 
   // Flash saat kena hit
@@ -3706,6 +3839,18 @@ function drawSingleEnemy(enemy) {
     ctx.font = '7px monospace';
     ctx.fillText('NULL', enemy.x - 10, enemy.y + vSize / 2 + 12);
   }
+}
+
+function _drawFallbackEnemyShape(ctx2, enemy, cx, cy, vSize) {
+  ctx2.save();
+  ctx2.beginPath();
+  ctx2.arc(cx, cy, (vSize || 20) / 2, 0, Math.PI * 2);
+  ctx2.fillStyle = enemy.baseColor || '#FF2D55';
+  ctx2.fill();
+  ctx2.strokeStyle = '#FFFFFF';
+  ctx2.lineWidth = 1;
+  ctx2.stroke();
+  ctx2.restore();
 }
 
 function drawEnemyHpBar(enemy) {
